@@ -20,6 +20,11 @@ const SUN_WELL_DEPTH = 7.2;
 const BASE_CAMERA_DISTANCE = 54;
 const BASE_FOG_NEAR = 42;
 const BASE_FOG_FAR = 105;
+const GRID_SIZE = 80;
+const GRID_FADE_END_LIMIT = GRID_SIZE / 2 - 0.5;
+const GRID_FADE_WIDTH = 5.5;
+const GRID_ORBIT_PADDING = 1.5;
+const FOCUSED_PLANET_SCALE = 1.13;
 const ASTEROID_COUNT = 220;
 const ASTEROID_BELT_INNER_RADIUS = 15.4;
 const ASTEROID_BELT_OUTER_RADIUS = 18.1;
@@ -303,6 +308,20 @@ function OrbitalSystem({
   const hoveredModule = useRef<ModuleId | null>(null);
   const lastNearest = useRef<ModuleId | null>(null);
   const orbitScale = useMemo(() => THREE.MathUtils.clamp(size.width / 820, 0.55, 1), [size.width]);
+  const gridFadeRange = useMemo(() => {
+    const orbitalEnvelope = Math.max(...PLANETS.map((planet) => (
+      planet.radius * orbitScale
+      + planet.size
+        * (planet.hasRings ? 1.82 : 1)
+        * FOCUSED_PLANET_SCALE
+    )));
+    const start = Math.min(
+      orbitalEnvelope + GRID_ORBIT_PADDING,
+      GRID_FADE_END_LIMIT - GRID_FADE_WIDTH,
+    );
+
+    return { start, end: start + GRID_FADE_WIDTH };
+  }, [orbitScale]);
   const orbitLineObjects = useMemo(() => PLANETS.map(() => {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute(
@@ -323,8 +342,8 @@ function OrbitalSystem({
     uniforms: {
       uColor: { value: new THREE.Color('#333333') },
       uOpacity: { value: 0.72 },
-      uFadeStart: { value: 29 },
-      uFadeEnd: { value: 39 },
+      uFadeStart: { value: gridFadeRange.start },
+      uFadeEnd: { value: gridFadeRange.end },
     },
     vertexShader: `
       varying float vRadius;
@@ -358,6 +377,11 @@ function OrbitalSystem({
   }, []);
 
   useEffect(() => () => gridMaterial.dispose(), [gridMaterial]);
+
+  useEffect(() => {
+    gridMaterial.uniforms.uFadeStart.value = gridFadeRange.start;
+    gridMaterial.uniforms.uFadeEnd.value = gridFadeRange.end;
+  }, [gridFadeRange, gridMaterial]);
 
   useEffect(() => () => {
     orbitLineObjects.forEach((line) => {
@@ -462,7 +486,7 @@ function OrbitalSystem({
   return (
     <group>
       <mesh rotation={[GRID_ROTATION_X, 0, 0]} position={[0, GRID_BASE_Y, 0]}>
-        <planeGeometry ref={gridRef} args={[80, 80, 72, 72]} />
+        <planeGeometry ref={gridRef} args={[GRID_SIZE, GRID_SIZE, 72, 72]} />
         <primitive object={gridMaterial} attach="material" />
       </mesh>
 
@@ -498,7 +522,7 @@ function OrbitalSystem({
           >
             <group
               ref={(element) => { planetSpinGroups.current[index] = element; }}
-              scale={isFocused || isActive ? 1.13 : 1}
+              scale={isFocused || isActive ? FOCUSED_PLANET_SCALE : 1}
             >
               <mesh>
                 <icosahedronGeometry args={[planet.size, planet.geometryDetail]} />
