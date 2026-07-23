@@ -123,6 +123,7 @@ function SelectionFrame({
 
   return (
     <Html
+      wrapperClass="pointer-events-none"
       position={[0, 0, 0]}
       center
       distanceFactor={PLANET_LABEL_DISTANCE_FACTOR}
