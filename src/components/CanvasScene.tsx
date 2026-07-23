@@ -17,6 +17,28 @@ const GRID_ROTATION_X = Math.PI / 2;
 const ORBIT_SEGMENTS = 160;
 const SUN_RADIUS = 3.35;
 const SUN_WELL_DEPTH = 7.2;
+const ASTEROID_COUNT = 220;
+const ASTEROID_BELT_INNER_RADIUS = 15.4;
+const ASTEROID_BELT_OUTER_RADIUS = 18.1;
+
+interface AsteroidDatum {
+  angle: number;
+  radius: number;
+  height: number;
+  scale: number;
+  stretch: number;
+  rotation: [number, number, number];
+  speed: number;
+}
+
+function seededNoise(index: number, channel: number) {
+  const value = Math.sin((index + 1) * (12.9898 + channel * 31.731)) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function getPlanetCenterOffset(size: number) {
+  return size + 0.14 + size * 0.04;
+}
 
 function getWellDepthAt(x: number, z: number, planetPositions: readonly THREE.Vector3[]) {
   let depth = SUN_WELL_DEPTH * Math.exp(-(x * x + z * z) * 0.018);
@@ -24,8 +46,11 @@ function getWellDepthAt(x: number, z: number, planetPositions: readonly THREE.Ve
   planetPositions.forEach((position, index) => {
     const dx = x - position.x;
     const dz = z - position.z;
-    const size = PLANETS[index].size;
-    depth += size * 2.45 * Math.exp(-(dx * dx + dz * dz) * 0.12);
+    const planet = PLANETS[index];
+    const isGasGiant = planet.planetClass === 'gas-giant';
+    const wellDepth = planet.size * (isGasGiant ? 3.2 : 2.5);
+    const wellRadius = planet.size * (isGasGiant ? 2 : 1.75) + 0.55;
+    depth += wellDepth * Math.exp(-(dx * dx + dz * dz) / (2 * wellRadius * wellRadius));
   });
 
   return depth;
@@ -157,6 +182,87 @@ function Sun() {
   );
 }
 
+function AsteroidBelt({
+  orbitScale,
+  planetPositions,
+}: {
+  orbitScale: number;
+  planetPositions: React.MutableRefObject<THREE.Vector3[]>;
+}) {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const asteroids = useMemo<AsteroidDatum[]>(() => (
+    Array.from({ length: ASTEROID_COUNT }, (_, index) => ({
+      angle: seededNoise(index, 0) * Math.PI * 2,
+      radius: THREE.MathUtils.lerp(
+        ASTEROID_BELT_INNER_RADIUS,
+        ASTEROID_BELT_OUTER_RADIUS,
+        seededNoise(index, 1),
+      ),
+      height: THREE.MathUtils.lerp(-0.18, 0.28, seededNoise(index, 2)),
+      scale: THREE.MathUtils.lerp(0.045, 0.15, Math.pow(seededNoise(index, 3), 1.7)),
+      stretch: THREE.MathUtils.lerp(0.7, 1.65, seededNoise(index, 4)),
+      rotation: [
+        seededNoise(index, 5) * Math.PI,
+        seededNoise(index, 6) * Math.PI,
+        seededNoise(index, 7) * Math.PI,
+      ],
+      speed: THREE.MathUtils.lerp(0.002, 0.006, seededNoise(index, 8)),
+    }))
+  ), []);
+
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+
+    asteroids.forEach((_, index) => {
+      const tone = seededNoise(index, 9) > 0.72 ? '#B85A3C' : '#77736A';
+      mesh.setColorAt(index, new THREE.Color(tone));
+    });
+
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [asteroids]);
+
+  useFrame(({ clock }) => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+
+    const elapsed = clock.getElapsedTime();
+    asteroids.forEach((asteroid, index) => {
+      const angle = asteroid.angle + elapsed * asteroid.speed;
+      const x = Math.cos(angle) * asteroid.radius * orbitScale;
+      const z = Math.sin(angle) * asteroid.radius * orbitScale;
+
+      dummy.position.set(
+        x,
+        GRID_BASE_Y - getWellDepthAt(x, z, planetPositions.current) + asteroid.height,
+        z,
+      );
+      dummy.rotation.set(
+        asteroid.rotation[0] + elapsed * asteroid.speed * 6,
+        asteroid.rotation[1] + elapsed * asteroid.speed * 4,
+        asteroid.rotation[2],
+      );
+      dummy.scale.set(
+        asteroid.scale * asteroid.stretch,
+        asteroid.scale,
+        asteroid.scale / asteroid.stretch,
+      );
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+    });
+
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, ASTEROID_COUNT]} frustumCulled={false}>
+      <icosahedronGeometry args={[1, 0]} />
+      <meshStandardMaterial color="#9A9485" roughness={0.9} metalness={0.02} flatShading />
+    </instancedMesh>
+  );
+}
+
 interface OrbitalSystemProps extends CanvasSceneProps {}
 
 function OrbitalSystem({
@@ -168,7 +274,7 @@ function OrbitalSystem({
   const { size } = useThree();
   const gridRef = useRef<THREE.PlaneGeometry>(null);
   const planetGroups = useRef<(THREE.Group | null)[]>([]);
-  const planetMeshes = useRef<(THREE.Mesh | null)[]>([]);
+  const planetSpinGroups = useRef<(THREE.Group | null)[]>([]);
   const planetPositions = useRef(PLANETS.map(() => new THREE.Vector3()));
   const hoveredModule = useRef<ModuleId | null>(null);
   const lastNearest = useRef<ModuleId | null>(null);
@@ -251,13 +357,15 @@ function OrbitalSystem({
 
     PLANETS.forEach((planet, index) => {
       const position = planetPositions.current[index];
-      position.y = GRID_BASE_Y - getWellDepthAt(position.x, position.z, planetPositions.current) + planet.size * 0.72;
+      position.y = GRID_BASE_Y
+        - getWellDepthAt(position.x, position.z, planetPositions.current)
+        + getPlanetCenterOffset(planet.size);
 
       planetGroups.current[index]?.position.copy(position);
-      const planetMesh = planetMeshes.current[index];
-      if (planetMesh) {
-        planetMesh.rotation.x += delta * (0.28 + index * 0.03);
-        planetMesh.rotation.y += delta * (0.42 + index * 0.04);
+      const spinGroup = planetSpinGroups.current[index];
+      if (spinGroup) {
+        spinGroup.rotation.x += delta * (0.18 + index * 0.025);
+        spinGroup.rotation.y += delta * (0.34 + index * 0.035);
       }
     });
 
@@ -284,7 +392,9 @@ function OrbitalSystem({
         const angle = (pointIndex / ORBIT_SEGMENTS) * Math.PI * 2;
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
-        const y = GRID_BASE_Y - getWellDepthAt(x, z, planetPositions.current) + planet.size * 0.72;
+        const y = GRID_BASE_Y
+          - getWellDepthAt(x, z, planetPositions.current)
+          + getPlanetCenterOffset(planet.size);
         positions.setXYZ(pointIndex, x, y, z);
       }
 
@@ -336,6 +446,8 @@ function OrbitalSystem({
         <primitive key={`orbit-${planet.id}`} object={orbitLineObjects[index]} />
       ))}
 
+      <AsteroidBelt orbitScale={orbitScale} planetPositions={planetPositions} />
+
       {PLANETS.map((planet, index) => {
         const isFocused = focusedModule === planet.id;
         const isActive = activeModule === planet.id;
@@ -360,16 +472,45 @@ function OrbitalSystem({
               releasePlanet();
             }}
           >
-            <mesh ref={(element) => { planetMeshes.current[index] = element; }} scale={isFocused || isActive ? 1.13 : 1}>
-              <icosahedronGeometry args={[planet.size, index === 1 ? 1 : 0]} />
-              <meshStandardMaterial
-                color={planet.color}
-                emissive={planet.id === 'projects' ? '#4F0D09' : planet.color}
-                emissiveIntensity={isFocused || isActive ? (planet.id === 'projects' ? 0.65 : 1.1) : 0.28}
-                roughness={0.48}
-                metalness={0.08}
-              />
-            </mesh>
+            <group
+              ref={(element) => { planetSpinGroups.current[index] = element; }}
+              scale={isFocused || isActive ? 1.13 : 1}
+            >
+              <mesh>
+                <icosahedronGeometry args={[planet.size, planet.geometryDetail]} />
+                <meshStandardMaterial
+                  color={planet.color}
+                  emissive={planet.id === 'projects' ? '#4F0D09' : planet.color}
+                  emissiveIntensity={isFocused || isActive ? (planet.id === 'projects' ? 0.62 : 0.72) : 0.18}
+                  roughness={planet.planetClass === 'rocky' ? 0.86 : 0.62}
+                  metalness={0.03}
+                  flatShading
+                />
+              </mesh>
+
+              {planet.planetClass === 'gas-giant' && [-0.34, 0, 0.34].map((latitude) => {
+                const bandRadius = planet.size * Math.sqrt(1 - latitude * latitude);
+                return (
+                  <mesh key={latitude} position={[0, planet.size * latitude, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                    <torusGeometry args={[bandRadius, planet.size * 0.016, 5, 64]} />
+                    <meshBasicMaterial color="#635B4C" transparent opacity={0.48} depthWrite={false} />
+                  </mesh>
+                );
+              })}
+
+              {planet.hasRings && (
+                <mesh rotation={[Math.PI / 2.35, 0.08, 0.24]}>
+                  <ringGeometry args={[planet.size * 1.34, planet.size * 1.82, 96]} />
+                  <meshBasicMaterial
+                    color="#AAA087"
+                    transparent
+                    opacity={0.38}
+                    side={THREE.DoubleSide}
+                    depthWrite={false}
+                  />
+                </mesh>
+              )}
+            </group>
 
             <mesh scale={1.9}>
               <sphereGeometry args={[planet.size, 16, 16]} />

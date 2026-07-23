@@ -41,7 +41,7 @@ export default function OverlayUI({
         <div className="mt-5 h-1.5 w-20 bg-[#BE2E21] md:w-28" />
         <p className="mt-4 hidden max-w-xs text-[10px] font-bold uppercase leading-relaxed tracking-[0.22em] text-[#DED8C4]/55 md:block">
           Visual engineer / spatial designer<br />
-          Sector 04 — orbital archive
+          Inner rock / belt / outer giants
         </p>
       </header>
 
@@ -95,7 +95,9 @@ export default function OverlayUI({
             <span className="text-5xl font-black leading-none text-[#DED8C4]/25">{focusedPlanet.index}</span>
             <div>
               <p className="text-3xl font-black italic uppercase leading-none text-[#DED8C4]">{focusedPlanet.subtitle}</p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-[#DED8C4]/45">Click to access data</p>
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-[#DED8C4]/45">
+                {focusedPlanet.planetClass === 'rocky' ? 'Low-poly rock body' : 'High-facet gas giant'}
+              </p>
             </div>
           </div>
         </motion.aside>
