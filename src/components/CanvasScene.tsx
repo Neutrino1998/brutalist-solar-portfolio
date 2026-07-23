@@ -3,7 +3,7 @@ import { Html, OrbitControls } from '@react-three/drei';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ModuleId } from '../types';
-import { PLANETS } from '../data';
+import { PLANETS, SUN_NODE } from '../data';
 
 interface CanvasSceneProps {
   activeModule: ModuleId | null;
@@ -24,7 +24,8 @@ const GRID_SIZE = 80;
 const GRID_FADE_END_LIMIT = GRID_SIZE / 2 - 0.5;
 const GRID_FADE_WIDTH = 5.5;
 const GRID_ORBIT_PADDING = 1.5;
-const FOCUSED_PLANET_SCALE = 1.13;
+const PLANET_LABEL_DISTANCE_FACTOR = 18;
+const PLANET_FRAME_PADDING = 1.22;
 const ASTEROID_COUNT = 220;
 const ASTEROID_BELT_INNER_RADIUS = 15.4;
 const ASTEROID_BELT_OUTER_RADIUS = 18.1;
@@ -102,10 +103,67 @@ function AdaptiveFog() {
   return null;
 }
 
-function Sun() {
+interface SelectionFrameProps {
+  visualRadius: number;
+  index: string;
+  systemLabel: string;
+  subtitle: string;
+}
+
+function SelectionFrame({
+  visualRadius,
+  index,
+  systemLabel,
+  subtitle,
+}: SelectionFrameProps) {
+  const { size } = useThree();
+  const frameSize = (2 * visualRadius * size.height / PLANET_LABEL_DISTANCE_FACTOR)
+    * PLANET_FRAME_PADDING;
+  const frameRightEdge = frameSize / Math.SQRT2;
+
+  return (
+    <Html
+      position={[0, 0, 0]}
+      center
+      distanceFactor={PLANET_LABEL_DISTANCE_FACTOR}
+      zIndexRange={[7, 0]}
+    >
+      <div
+        className="pointer-events-none relative"
+        style={{ width: frameSize, height: frameSize }}
+      >
+        <span className="absolute inset-0 rotate-45 border-2 border-[#DED8C4]" />
+        <span
+          className="absolute top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
+          style={{ left: `calc(50% + ${frameRightEdge}px)` }}
+        >
+          <span className="h-px w-8 bg-[#DED8C4]" />
+          <span className="border-l-2 border-[#DED8C4] pl-4">
+            <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#BE2E21]">
+              {index} / {systemLabel}
+            </span>
+            <span className="mt-1 block text-xl font-black italic uppercase leading-none text-[#DED8C4]">
+              {subtitle}
+            </span>
+          </span>
+        </span>
+      </div>
+    </Html>
+  );
+}
+
+function Sun({
+  activeModule,
+  focusedModule,
+  setActiveModule,
+  setFocusedModule,
+}: CanvasSceneProps) {
   const coreRef = useRef<THREE.Mesh>(null);
   const coronaRef = useRef<THREE.Mesh>(null);
   const sunY = GRID_BASE_Y - SUN_WELL_DEPTH + SUN_RADIUS * 0.74;
+  const isFocused = focusedModule === 'sun';
+  const isActive = activeModule === 'sun';
+  const isSelected = activeModule ? isActive : isFocused;
   const glowTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
     canvas.width = 128;
@@ -145,6 +203,27 @@ function Sun() {
   return (
     <group position={[0, sunY, 0]}>
       <pointLight color="#FF6A2D" intensity={950} distance={58} decay={2} />
+
+      <mesh
+        scale={1.5}
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          setFocusedModule('sun');
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={(event) => {
+          event.stopPropagation();
+          document.body.style.cursor = 'auto';
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
+          setFocusedModule('sun');
+          setActiveModule(isActive ? null : 'sun');
+        }}
+      >
+        <sphereGeometry args={[SUN_RADIUS, 20, 20]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
 
       <sprite scale={[16, 16, 1]} renderOrder={-1}>
         <spriteMaterial
@@ -196,17 +275,14 @@ function Sun() {
         />
       </mesh>
 
-      <Html position={[0, SUN_RADIUS + 1.1, 0]} center distanceFactor={18} zIndexRange={[8, 0]}>
-        <div className="pointer-events-none flex items-center gap-2 whitespace-nowrap text-[#DED8C4]">
-          <span className="grid h-7 w-7 rotate-45 place-items-center bg-[#DED8C4] text-[#121212]">
-            <span className="-rotate-45 text-[9px] font-black">00</span>
-          </span>
-          <span>
-            <span className="block text-[8px] font-black uppercase tracking-[0.22em] text-[#BE2E21]">Primary core</span>
-            <span className="block text-sm font-black italic uppercase leading-none">Solar node</span>
-          </span>
-        </div>
-      </Html>
+      {isSelected && (
+        <SelectionFrame
+          visualRadius={SUN_RADIUS * 1.42}
+          index={SUN_NODE.index}
+          systemLabel={SUN_NODE.systemLabel}
+          subtitle={SUN_NODE.subtitle}
+        />
+      )}
     </group>
   );
 }
@@ -305,15 +381,12 @@ function OrbitalSystem({
   const planetGroups = useRef<(THREE.Group | null)[]>([]);
   const planetSpinGroups = useRef<(THREE.Group | null)[]>([]);
   const planetPositions = useRef(PLANETS.map(() => new THREE.Vector3()));
-  const hoveredModule = useRef<ModuleId | null>(null);
-  const lastNearest = useRef<ModuleId | null>(null);
   const orbitScale = useMemo(() => THREE.MathUtils.clamp(size.width / 820, 0.55, 1), [size.width]);
   const gridFadeRange = useMemo(() => {
     const orbitalEnvelope = Math.max(...PLANETS.map((planet) => (
       planet.radius * orbitScale
       + planet.size
         * (planet.hasRings ? 1.82 : 1)
-        * FOCUSED_PLANET_SCALE
     )));
     const start = Math.min(
       orbitalEnvelope + GRID_ORBIT_PADDING,
@@ -390,7 +463,7 @@ function OrbitalSystem({
     });
   }, [orbitLineObjects]);
 
-  useFrame(({ camera, clock }, delta) => {
+  useFrame(({ clock }, delta) => {
     const elapsed = clock.getElapsedTime();
 
     PLANETS.forEach((planet, index) => {
@@ -447,39 +520,18 @@ function OrbitalSystem({
       }
 
       positions.needsUpdate = true;
-      material.color.set(focusedModule === planet.id ? '#DED8C4' : '#625F57');
-      material.opacity = focusedModule === planet.id ? 0.62 : 0.2;
+      material.color.set('#625F57');
+      material.opacity = 0.2;
     });
 
-    if (!activeModule && !hoveredModule.current) {
-      let nearestId = PLANETS[0].id;
-      let nearestDistance = Number.POSITIVE_INFINITY;
-
-      planetPositions.current.forEach((position, index) => {
-        const distance = camera.position.distanceToSquared(position);
-        if (distance < nearestDistance) {
-          nearestDistance = distance;
-          nearestId = PLANETS[index].id;
-        }
-      });
-
-      if (nearestId !== lastNearest.current) {
-        lastNearest.current = nearestId;
-        setFocusedModule(nearestId);
-      }
-    }
   });
 
   const focusPlanet = (id: ModuleId) => {
-    hoveredModule.current = id;
-    lastNearest.current = null;
     setFocusedModule(id);
     document.body.style.cursor = 'pointer';
   };
 
   const releasePlanet = () => {
-    hoveredModule.current = null;
-    lastNearest.current = null;
     document.body.style.cursor = 'auto';
   };
 
@@ -499,6 +551,8 @@ function OrbitalSystem({
       {PLANETS.map((planet, index) => {
         const isFocused = focusedModule === planet.id;
         const isActive = activeModule === planet.id;
+        const isSelected = activeModule ? isActive : isFocused;
+        const visualRadius = planet.size * (planet.hasRings ? 1.82 : 1);
 
         return (
           <group
@@ -522,14 +576,13 @@ function OrbitalSystem({
           >
             <group
               ref={(element) => { planetSpinGroups.current[index] = element; }}
-              scale={isFocused || isActive ? FOCUSED_PLANET_SCALE : 1}
             >
               <mesh>
                 <icosahedronGeometry args={[planet.size, planet.geometryDetail]} />
                 <meshStandardMaterial
                   color={planet.color}
                   emissive={planet.id === 'projects' ? '#4F0D09' : planet.color}
-                  emissiveIntensity={isFocused || isActive ? (planet.id === 'projects' ? 0.62 : 0.72) : 0.18}
+                  emissiveIntensity={0.18}
                   roughness={planet.planetClass === 'rocky' ? 0.86 : 0.62}
                   metalness={0.03}
                   flatShading
@@ -565,31 +618,14 @@ function OrbitalSystem({
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
 
-            {(isFocused || isActive) && (
-              <>
-                <mesh rotation={[Math.PI / 2.6, 0, index * 0.7]}>
-                  <torusGeometry args={[planet.size * 1.58, 0.035, 8, 72]} />
-                  <meshBasicMaterial color="#DED8C4" transparent opacity={0.82} depthWrite={false} />
-                </mesh>
-                <mesh scale={1.42} rotation={[0, index * 0.6, 0]}>
-                  <icosahedronGeometry args={[planet.size, 1]} />
-                  <meshBasicMaterial color="#DED8C4" wireframe transparent opacity={0.32} depthWrite={false} />
-                </mesh>
-                <pointLight color={planet.color} intensity={32} distance={9} decay={2} />
-              </>
+            {isSelected && (
+              <SelectionFrame
+                visualRadius={visualRadius}
+                index={planet.index}
+                systemLabel={planet.systemLabel}
+                subtitle={planet.subtitle}
+              />
             )}
-
-            <Html position={[0, planet.size + 1.35, 0]} center distanceFactor={18} zIndexRange={[7, 0]}>
-              <div className={`pointer-events-none flex items-center gap-2 whitespace-nowrap transition-opacity ${isFocused || isActive ? 'opacity-100' : 'opacity-50'}`}>
-                <span className={`grid h-7 w-7 rotate-45 place-items-center border ${isFocused || isActive ? 'border-[#DED8C4] bg-[#DED8C4] text-[#121212]' : 'border-[#DED8C4]/60 bg-[#121212]/70 text-[#DED8C4]'}`}>
-                  <span className="-rotate-45 text-[9px] font-black">{planet.index}</span>
-                </span>
-                <span>
-                  <span className="block text-[7px] font-black uppercase tracking-[0.2em] text-[#BE2E21]">{planet.systemLabel}</span>
-                  <span className="block text-xs font-black italic uppercase leading-none text-[#DED8C4]">{planet.subtitle}</span>
-                </span>
-              </div>
-            </Html>
           </group>
         );
       })}
@@ -627,7 +663,7 @@ export default function CanvasScene(props: CanvasSceneProps) {
         />
 
         <OrbitalSystem {...props} />
-        <Sun />
+        <Sun {...props} />
       </Canvas>
     </div>
   );

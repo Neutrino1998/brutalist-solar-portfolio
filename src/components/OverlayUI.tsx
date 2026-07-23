@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { ModuleId } from '../types';
-import { MODULE_CONTENT, PLANETS } from '../data';
+import { MODULE_CONTENT, NAV_NODES } from '../data';
 
 interface OverlayUIProps {
   activeModule: ModuleId | null;
@@ -16,10 +16,7 @@ export default function OverlayUI({
   setFocusedModule,
 }: OverlayUIProps) {
   const activeData = activeModule ? MODULE_CONTENT[activeModule] : null;
-  const focusedPlanet = PLANETS.find((planet) => planet.id === focusedModule) ?? PLANETS[0];
-  const activePlanet = activeModule
-    ? PLANETS.find((planet) => planet.id === activeModule) ?? focusedPlanet
-    : null;
+  const activeIndex = NAV_NODES.find((node) => node.id === activeModule)?.index;
 
   const openModule = (id: ModuleId) => {
     setFocusedModule(id);
@@ -52,56 +49,32 @@ export default function OverlayUI({
         <p className="col-span-2 mb-1 hidden text-[9px] font-bold uppercase tracking-[0.3em] text-[#DED8C4]/45 md:block">
           Archive ref. 2026-C
         </p>
-        {PLANETS.map((planet) => {
-          const isFocused = focusedModule === planet.id;
-          const isActive = activeModule === planet.id;
+        {NAV_NODES.map((node) => {
+          const isFocused = focusedModule === node.id;
+          const isActive = activeModule === node.id;
 
           return (
             <button
-              key={planet.id}
+              key={node.id}
               type="button"
-              aria-label={`打开${planet.title}模块`}
+              aria-label={`打开${node.title}模块`}
               aria-pressed={isActive}
-              onMouseEnter={() => setFocusedModule(planet.id)}
-              onFocus={() => setFocusedModule(planet.id)}
-              onClick={() => openModule(planet.id)}
+              onMouseEnter={() => setFocusedModule(node.id)}
+              onFocus={() => setFocusedModule(node.id)}
+              onClick={() => openModule(node.id)}
               className={`group flex h-9 min-w-10 items-center justify-between gap-4 border px-2 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-colors md:min-w-44 md:px-3 ${
                 isFocused
                   ? 'border-[#DED8C4] bg-[#DED8C4] text-[#121212]'
                   : 'border-[#5A5750] bg-[#121212]/70 text-[#DED8C4] hover:border-[#DED8C4]'
               }`}
             >
-              <span className="text-xs">{planet.index}</span>
-              <span className="hidden md:inline">{planet.subtitle}</span>
+              <span className="text-xs">{node.index}</span>
+              <span className="hidden md:inline">{node.subtitle}</span>
               <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-[#BE2E21]' : isFocused ? 'bg-[#121212]' : 'bg-[#5A5750]'}`} />
             </button>
           );
         })}
       </nav>
-
-      <AnimatePresence mode="wait">
-        <motion.aside
-          key={focusedPlanet.id}
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -10 }}
-          transition={{ duration: 0.2 }}
-          className="absolute bottom-32 right-16 hidden text-right lg:block"
-        >
-          <div className="text-[10px] font-black uppercase tracking-[0.28em] text-[#BE2E21]">
-            {focusedPlanet.systemLabel}
-          </div>
-          <div className="mt-1 flex items-end justify-end gap-3">
-            <span className="text-5xl font-black leading-none text-[#DED8C4]/25">{focusedPlanet.index}</span>
-            <div>
-              <p className="text-3xl font-black italic uppercase leading-none text-[#DED8C4]">{focusedPlanet.subtitle}</p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-[#DED8C4]/45">
-                {focusedPlanet.planetClass === 'rocky' ? 'Low-poly rock body' : 'High-facet gas giant'}
-              </p>
-            </div>
-          </div>
-        </motion.aside>
-      </AnimatePresence>
 
       <div className="absolute bottom-24 left-1/2 hidden -translate-x-1/2 items-center gap-4 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/50 md:flex">
         <span>Drag — orbit</span>
@@ -147,7 +120,7 @@ export default function OverlayUI({
               <div className="mb-10 flex flex-col">
                 <div className="mb-5 flex items-center gap-4">
                   <span className="grid h-10 w-10 rotate-45 place-items-center bg-[#DED8C4] text-[#121212]">
-                    <span className="-rotate-45 text-xs font-black">{activePlanet?.index}</span>
+                    <span className="-rotate-45 text-xs font-black">{activeIndex}</span>
                   </span>
                   <span className="text-xs font-black uppercase tracking-[0.24em] text-[#BE2E21]">
                     {activeData.subtitle} / DATA NODE

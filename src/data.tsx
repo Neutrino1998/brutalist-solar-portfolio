@@ -1,4 +1,12 @@
-import { PlanetData, ModuleContent } from './types';
+import { ModuleContent, ModuleNode, PlanetData } from './types';
+
+export const SUN_NODE: ModuleNode = {
+  id: 'sun',
+  index: '00',
+  title: '主系统',
+  subtitle: 'CORE',
+  systemLabel: 'PRIMARY CORE',
+};
 
 export const PLANETS: PlanetData[] = [
   {
@@ -56,7 +64,28 @@ export const PLANETS: PlanetData[] = [
   },
 ];
 
+export const NAV_NODES: ModuleNode[] = [SUN_NODE, ...PLANETS];
+
 export const MODULE_CONTENT: Record<string, ModuleContent> = {
+  sun: {
+    id: 'sun',
+    title: '主系统',
+    subtitle: 'CORE',
+    body: (
+      <div className="space-y-6 text-lg">
+        <p className="text-2xl font-black uppercase tracking-widest text-[#BE2E21]">
+          PORTFOLIO ORBITAL CORE
+        </p>
+        <div className="h-1 w-full bg-[#BE2E21]" />
+        <p>
+          整个作品档案的恒星核心。四个轨道节点分别对应简介、作品、技能与联系。
+        </p>
+        <p className="font-bold uppercase tracking-wider text-[#DED8C4]/60">
+          Select a node / Inspect the archive
+        </p>
+      </div>
+    ),
+  },
   profile: {
     id: 'profile',
     title: '简介',
