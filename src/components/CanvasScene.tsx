@@ -17,6 +17,9 @@ const GRID_ROTATION_X = Math.PI / 2;
 const ORBIT_SEGMENTS = 160;
 const SUN_RADIUS = 3.35;
 const SUN_WELL_DEPTH = 7.2;
+const BASE_CAMERA_DISTANCE = 54;
+const BASE_FOG_NEAR = 42;
+const BASE_FOG_FAR = 105;
 const ASTEROID_COUNT = 220;
 const ASTEROID_BELT_INNER_RADIUS = 15.4;
 const ASTEROID_BELT_OUTER_RADIUS = 18.1;
@@ -69,6 +72,27 @@ function ResponsiveCamera() {
       camera.updateProjectionMatrix();
     }
   }, [camera, size.width]);
+
+  return null;
+}
+
+function AdaptiveFog() {
+  const { camera, scene } = useThree();
+
+  useFrame(() => {
+    const fog = scene.fog;
+    if (!(fog instanceof THREE.Fog)) return;
+
+    const distanceToOrbitCenter = Math.sqrt(
+      camera.position.x * camera.position.x
+      + (camera.position.y + 3.5) * (camera.position.y + 3.5)
+      + camera.position.z * camera.position.z,
+    );
+    const zoomDelta = Math.max(0, distanceToOrbitCenter - BASE_CAMERA_DISTANCE);
+
+    fog.near = BASE_FOG_NEAR + zoomDelta * 0.84;
+    fog.far = BASE_FOG_FAR + zoomDelta * 1.36;
+  });
 
   return null;
 }
@@ -558,7 +582,8 @@ export default function CanvasScene(props: CanvasSceneProps) {
         gl={{ antialias: true, alpha: true }}
       >
         <ResponsiveCamera />
-        <fog attach="fog" args={['#121212', 42, 105]} />
+        <fog attach="fog" args={['#121212', BASE_FOG_NEAR, BASE_FOG_FAR]} />
+        <AdaptiveFog />
 
         <ambientLight intensity={0.72} color="#DED8C4" />
         <directionalLight position={[14, 24, 18]} intensity={2.2} color="#FFF2CE" />
