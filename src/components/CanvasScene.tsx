@@ -690,71 +690,92 @@ const PLANET_RING_BANDS = [
     opacity: 0.24,
   },
 ] as const;
-const RING_SHADOW_OUTER_SCALE = 1.92;
-const RING_SHADOW_HALF_WIDTH_SCALE = 1.08;
-const RING_SHADOW_TEXTURE_WIDTH = 384;
+const RING_SHADOW_COLOR_SCALE = 0.46;
+const RING_SHADOW_SOLID_HALF_WIDTH = 0.78;
+const RING_SHADOW_SOFT_HALF_WIDTH = 1.06;
 
-function createPlanetRingShadowTexture() {
-  const canvas = document.createElement('canvas');
-  const pixelsPerRadius = RING_SHADOW_TEXTURE_WIDTH / RING_SHADOW_OUTER_SCALE;
-  canvas.width = RING_SHADOW_TEXTURE_WIDTH;
-  canvas.height = Math.round(
-    RING_SHADOW_HALF_WIDTH_SCALE * 2 * pixelsPerRadius,
+interface PlanetRingBandProps {
+  size: number;
+  innerScale: number;
+  outerScale: number;
+  color: string;
+  opacity: number;
+}
+
+function PlanetRingBand({
+  size,
+  innerScale,
+  outerScale,
+  color,
+  opacity,
+}: PlanetRingBandProps) {
+  const geometry = useMemo(() => {
+    const ringGeometry = new THREE.RingGeometry(
+      size * innerScale,
+      size * outerScale,
+      256,
+      4,
+    );
+    const positions = ringGeometry.attributes.position;
+    const colors = new Float32Array(positions.count * 3);
+    const baseColor = new THREE.Color(color);
+    const shadowColor = baseColor.clone().multiplyScalar(RING_SHADOW_COLOR_SCALE);
+    const vertexColor = new THREE.Color();
+
+    for (let index = 0; index < positions.count; index += 1) {
+      const distanceBehindPlanet = positions.getX(index);
+      const distanceFromShadowAxis = Math.abs(positions.getY(index));
+      const behindPlanet = THREE.MathUtils.smoothstep(
+        distanceBehindPlanet,
+        0,
+        size * 0.16,
+      );
+      const insideShadow = 1 - THREE.MathUtils.smoothstep(
+        distanceFromShadowAxis,
+        size * RING_SHADOW_SOLID_HALF_WIDTH,
+        size * RING_SHADOW_SOFT_HALF_WIDTH,
+      );
+      const shadowAmount = behindPlanet * insideShadow;
+
+      vertexColor.copy(baseColor).lerp(shadowColor, shadowAmount);
+      vertexColor.toArray(colors, index * 3);
+    }
+
+    ringGeometry.setAttribute(
+      'color',
+      new THREE.Float32BufferAttribute(colors, 3),
+    );
+    return ringGeometry;
+  }, [color, innerScale, outerScale, size]);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  return (
+    <mesh>
+      <primitive object={geometry} attach="geometry" />
+      <meshBasicMaterial
+        vertexColors
+        transparent
+        opacity={opacity}
+        side={THREE.DoubleSide}
+        depthWrite={false}
+      />
+    </mesh>
   );
-  const context = canvas.getContext('2d');
-
-  if (context) {
-    const centerY = canvas.height / 2;
-    const edgeFade = context.createLinearGradient(0, 0, 0, canvas.height);
-    edgeFade.addColorStop(0, '#000000');
-    edgeFade.addColorStop(0.1, '#FFFFFF');
-    edgeFade.addColorStop(0.9, '#FFFFFF');
-    edgeFade.addColorStop(1, '#000000');
-    context.fillStyle = edgeFade;
-
-    PLANET_RING_BANDS.forEach((band) => {
-      context.beginPath();
-      context.arc(
-        0,
-        centerY,
-        band.outerScale * pixelsPerRadius,
-        0,
-        Math.PI * 2,
-      );
-      context.arc(
-        0,
-        centerY,
-        band.innerScale * pixelsPerRadius,
-        0,
-        Math.PI * 2,
-        true,
-      );
-      context.fill('evenodd');
-    });
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.NoColorSpace;
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  return texture;
 }
 
 function PlanetRing({ size }: { size: number }) {
-  const shadowRef = useRef<THREE.Group>(null);
+  const ringBandsRef = useRef<THREE.Group>(null);
   const sunInRingSpace = useMemo(() => new THREE.Vector3(), []);
-  const shadowTexture = useMemo(createPlanetRingShadowTexture, []);
-
-  useEffect(() => () => shadowTexture.dispose(), [shadowTexture]);
 
   useFrame(() => {
-    const shadow = shadowRef.current;
-    const ringPlane = shadow?.parent;
-    if (!shadow || !ringPlane) return;
+    const ringBands = ringBandsRef.current;
+    const ringPlane = ringBands?.parent;
+    if (!ringBands || !ringPlane) return;
 
     sunInRingSpace.copy(SUN_POSITION);
     ringPlane.worldToLocal(sunInRingSpace);
-    shadow.rotation.z = Math.atan2(sunInRingSpace.y, sunInRingSpace.x) + Math.PI;
+    ringBands.rotation.z = Math.atan2(sunInRingSpace.y, sunInRingSpace.x) + Math.PI;
   });
 
   return (
@@ -762,38 +783,17 @@ function PlanetRing({ size }: { size: number }) {
       rotation={[Math.PI / 2, 0, 0]}
       renderOrder={RING_RENDER_ORDER}
     >
-      {PLANET_RING_BANDS.map((band, index) => (
-        <mesh key={`ring-band-${index}`}>
-          <ringGeometry
-            args={[size * band.innerScale, size * band.outerScale, 128]}
-          />
-          <meshBasicMaterial
+      <group ref={ringBandsRef} renderOrder={RING_RENDER_ORDER}>
+        {PLANET_RING_BANDS.map((band, index) => (
+          <PlanetRingBand
+            key={`ring-band-${index}`}
+            size={size}
+            innerScale={band.innerScale}
+            outerScale={band.outerScale}
             color={band.color}
-            transparent
             opacity={band.opacity}
-            side={THREE.DoubleSide}
-            depthWrite={false}
           />
-        </mesh>
-      ))}
-      <group ref={shadowRef}>
-        <mesh
-          position={[size * RING_SHADOW_OUTER_SCALE / 2, 0, 0]}
-          renderOrder={RING_RENDER_ORDER + 1}
-        >
-          <planeGeometry args={[
-            size * RING_SHADOW_OUTER_SCALE,
-            size * RING_SHADOW_HALF_WIDTH_SCALE * 2,
-          ]} />
-          <meshBasicMaterial
-            color="#090807"
-            alphaMap={shadowTexture}
-            transparent
-            opacity={0.48}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>
+        ))}
       </group>
     </group>
   );
@@ -964,7 +964,7 @@ function OrbitalSystem({
       orbitLine.geometry.setPositions(positions);
       material.color.set(isOrbitSelected ? '#55524C' : '#2D2C29');
       material.linewidth = isOrbitSelected ? 2.5 : 1;
-      orbitLine.renderOrder = isOrbitSelected ? RING_RENDER_ORDER + 1 : GRID_RENDER_ORDER + 1;
+      orbitLine.renderOrder = GRID_RENDER_ORDER + 1;
     });
 
   });
