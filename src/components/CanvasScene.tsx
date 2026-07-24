@@ -91,8 +91,8 @@ const GAS_GIANT_FRAGMENT_SHADER = `
     vec3 lightDirection = normalize(uSunPosition - vWorldPosition);
     float diffuse = max(dot(normal, lightDirection), 0.0);
     vec3 solarTint = vec3(1.0, 0.78, 0.58);
-    vec3 ambient = atmosphere * 0.07;
-    vec3 direct = atmosphere * solarTint * diffuse * 1.18;
+    vec3 ambient = atmosphere * 0.2;
+    vec3 direct = atmosphere * solarTint * diffuse * 0.98;
 
     gl_FragColor = vec4(ambient + direct, 1.0);
     #include <tonemapping_fragment>
@@ -1008,7 +1008,7 @@ export default function CanvasScene(props: CanvasSceneProps) {
         <fog attach="fog" args={['#121212', BASE_FOG_NEAR, BASE_FOG_FAR]} />
         <AdaptiveFog />
 
-        <ambientLight intensity={0.12} color="#DED8C4" />
+        <ambientLight intensity={0.32} color="#DED8C4" />
 
         <OrbitControls
           target={[0, -3.5, 0]}
