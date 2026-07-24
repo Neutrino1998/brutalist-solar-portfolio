@@ -757,6 +757,8 @@ function OrbitalSystem({
       color: '#2D2C29',
       linewidth: 1,
       worldUnits: false,
+      transparent: true,
+      opacity: 1,
       depthWrite: false,
       alphaToCoverage: true,
     });
@@ -817,8 +819,9 @@ function OrbitalSystem({
     });
   }, [orbitLines]);
 
-  useFrame(({ clock }, delta) => {
+  useFrame(({ clock, gl }, delta) => {
     const elapsed = clock.getElapsedTime();
+    const pixelRatio = gl.getPixelRatio();
 
     PLANETS.forEach((planet, index) => {
       const angle = elapsed * planet.speed + index * Math.PI * 0.7;
@@ -884,7 +887,7 @@ function OrbitalSystem({
 
       orbitLine.geometry.setPositions(positions);
       material.color.set(isOrbitSelected ? '#55524C' : '#2D2C29');
-      material.linewidth = isOrbitSelected ? 2 : 1;
+      material.linewidth = (isOrbitSelected ? 2 : 1) * pixelRatio;
       orbitLine.renderOrder = isOrbitSelected ? RING_RENDER_ORDER + 1 : GRID_RENDER_ORDER + 1;
     });
 
