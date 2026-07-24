@@ -24,8 +24,12 @@ const GRID_SIZE = 80;
 const GRID_FADE_END_LIMIT = GRID_SIZE / 2 - 0.5;
 const GRID_FADE_WIDTH = 5.5;
 const GRID_ORBIT_PADDING = 1.5;
-const PLANET_LABEL_DISTANCE_FACTOR = 18;
+const RING_GRID_CLEARANCE_FACTOR = 0.35;
+const GRID_RENDER_ORDER = 0;
+const RING_RENDER_ORDER = 2;
 const PLANET_FRAME_PADDING = 1.22;
+const SELECTION_FRAME_JOIN_OVERLAP = 1;
+const SELECTION_FRAME_Z_INDEX_RANGE: [number, number] = [7, 7];
 const ASTEROID_COUNT = 220;
 const ASTEROID_BELT_INNER_RADIUS = 15.4;
 const ASTEROID_BELT_OUTER_RADIUS = 18.1;
@@ -45,8 +49,9 @@ function seededNoise(index: number, channel: number) {
   return value - Math.floor(value);
 }
 
-function getPlanetCenterOffset(size: number) {
-  return size + 0.14 + size * 0.04;
+function getPlanetCenterOffset(size: number, hasRings = false) {
+  const ringClearance = hasRings ? size * RING_GRID_CLEARANCE_FACTOR : 0;
+  return size + 0.14 + size * 0.04 + ringClearance;
 }
 
 function getWellDepthAt(x: number, z: number, planetPositions: readonly THREE.Vector3[]) {
@@ -110,46 +115,90 @@ interface SelectionFrameProps {
   subtitle: string;
 }
 
+const selectionFrameScreenPosition = new THREE.Vector3();
+
+function calculatePixelAlignedPosition(
+  element: THREE.Object3D,
+  camera: THREE.Camera,
+  size: { width: number; height: number },
+) {
+  selectionFrameScreenPosition.setFromMatrixPosition(element.matrixWorld).project(camera);
+  const pixelRatio = window.devicePixelRatio || 1;
+  const x = (selectionFrameScreenPosition.x * 0.5 + 0.5) * size.width;
+  const y = (-selectionFrameScreenPosition.y * 0.5 + 0.5) * size.height;
+
+  return [
+    Math.round(x * pixelRatio) / pixelRatio,
+    Math.round(y * pixelRatio) / pixelRatio,
+  ];
+}
+
 function SelectionFrame({
   visualRadius,
   index,
   systemLabel,
   subtitle,
 }: SelectionFrameProps) {
-  const { size } = useThree();
-  const frameSize = (2 * visualRadius * size.height / PLANET_LABEL_DISTANCE_FACTOR)
-    * PLANET_FRAME_PADDING;
-  const frameRightEdge = frameSize / Math.SQRT2;
+  const { camera, viewport } = useThree();
+  const anchorRef = useRef<THREE.Group>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const connectorRef = useRef<HTMLSpanElement>(null);
+  const worldPosition = useMemo(() => new THREE.Vector3(), []);
+  const lastFrameSize = useRef(0);
+
+  useFrame(() => {
+    const anchor = anchorRef.current;
+    const frame = frameRef.current;
+    const connector = connectorRef.current;
+    if (!anchor || !frame || !connector) return;
+
+    anchor.getWorldPosition(worldPosition);
+    const viewportAtPlanet = viewport.getCurrentViewport(camera, worldPosition);
+    const frameSize = 2 * visualRadius * viewportAtPlanet.factor * PLANET_FRAME_PADDING;
+
+    if (Math.abs(frameSize - lastFrameSize.current) < 0.05) return;
+
+    frame.style.width = `${frameSize}px`;
+    frame.style.height = `${frameSize}px`;
+    frame.style.opacity = '1';
+    connector.style.left = `calc(50% + ${
+      frameSize / Math.SQRT2 - SELECTION_FRAME_JOIN_OVERLAP
+    }px)`;
+    lastFrameSize.current = frameSize;
+  });
 
   return (
-    <Html
-      wrapperClass="pointer-events-none"
-      position={[0, 0, 0]}
-      center
-      distanceFactor={PLANET_LABEL_DISTANCE_FACTOR}
-      zIndexRange={[7, 0]}
-    >
-      <div
-        className="pointer-events-none relative"
-        style={{ width: frameSize, height: frameSize }}
+    <group ref={anchorRef}>
+      <Html
+        wrapperClass="pointer-events-none"
+        position={[0, 0, 0]}
+        center
+        calculatePosition={calculatePixelAlignedPosition}
+        zIndexRange={SELECTION_FRAME_Z_INDEX_RANGE}
       >
-        <span className="absolute inset-0 rotate-45 border-2 border-[#DED8C4]" />
-        <span
-          className="absolute top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
-          style={{ left: `calc(50% + ${frameRightEdge}px)` }}
+        <div
+          ref={frameRef}
+          className="pointer-events-none relative opacity-0"
+          style={{ width: 0, height: 0 }}
         >
-          <span className="h-px w-8 bg-[#DED8C4]" />
-          <span className="border-l-2 border-[#DED8C4] pl-4">
-            <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#BE2E21]">
-              {index} / {systemLabel}
-            </span>
-            <span className="mt-1 block text-xl font-black italic uppercase leading-none text-[#DED8C4]">
-              {subtitle}
+          <span className="absolute inset-0 rotate-45 border-2 border-[#DED8C4]" />
+          <span
+            ref={connectorRef}
+            className="absolute top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
+          >
+            <span className="h-0.5 w-8 bg-[#DED8C4]" />
+            <span className="border-l-2 border-[#DED8C4] pl-4">
+              <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#BE2E21]">
+                {index} / {systemLabel}
+              </span>
+              <span className="mt-1 block text-xl font-black italic uppercase leading-none text-[#DED8C4]">
+                {subtitle}
+              </span>
             </span>
           </span>
-        </span>
-      </div>
-    </Html>
+        </div>
+      </Html>
+    </group>
   );
 }
 
@@ -481,7 +530,7 @@ function OrbitalSystem({
       const position = planetPositions.current[index];
       position.y = GRID_BASE_Y
         - getWellDepthAt(position.x, position.z, planetPositions.current)
-        + getPlanetCenterOffset(planet.size);
+        + getPlanetCenterOffset(planet.size, planet.hasRings);
 
       planetGroups.current[index]?.position.copy(position);
       const spinGroup = planetSpinGroups.current[index];
@@ -516,7 +565,7 @@ function OrbitalSystem({
         const z = Math.sin(angle) * radius;
         const y = GRID_BASE_Y
           - getWellDepthAt(x, z, planetPositions.current)
-          + getPlanetCenterOffset(planet.size);
+          + getPlanetCenterOffset(planet.size, planet.hasRings);
         positions.setXYZ(pointIndex, x, y, z);
       }
 
@@ -538,7 +587,11 @@ function OrbitalSystem({
 
   return (
     <group>
-      <mesh rotation={[GRID_ROTATION_X, 0, 0]} position={[0, GRID_BASE_Y, 0]}>
+      <mesh
+        rotation={[GRID_ROTATION_X, 0, 0]}
+        position={[0, GRID_BASE_Y, 0]}
+        renderOrder={GRID_RENDER_ORDER}
+      >
         <planeGeometry ref={gridRef} args={[GRID_SIZE, GRID_SIZE, 72, 72]} />
         <primitive object={gridMaterial} attach="material" />
       </mesh>
@@ -599,20 +652,23 @@ function OrbitalSystem({
                   </mesh>
                 );
               })}
-
-              {planet.hasRings && (
-                <mesh rotation={[Math.PI / 2.35, 0.08, 0.24]}>
-                  <ringGeometry args={[planet.size * 1.34, planet.size * 1.82, 96]} />
-                  <meshBasicMaterial
-                    color="#AAA087"
-                    transparent
-                    opacity={0.38}
-                    side={THREE.DoubleSide}
-                    depthWrite={false}
-                  />
-                </mesh>
-              )}
             </group>
+
+            {planet.hasRings && (
+              <mesh
+                rotation={[Math.PI / 2.35, 0.08, 0.24]}
+                renderOrder={RING_RENDER_ORDER}
+              >
+                <ringGeometry args={[planet.size * 1.34, planet.size * 1.82, 96]} />
+                <meshBasicMaterial
+                  color="#AAA087"
+                  transparent
+                  opacity={0.38}
+                  side={THREE.DoubleSide}
+                  depthWrite={false}
+                />
+              </mesh>
+            )}
 
             <mesh scale={1.9}>
               <sphereGeometry args={[planet.size, 16, 16]} />
