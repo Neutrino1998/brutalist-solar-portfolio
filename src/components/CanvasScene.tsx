@@ -819,9 +819,8 @@ function OrbitalSystem({
     });
   }, [orbitLines]);
 
-  useFrame(({ clock, gl }, delta) => {
+  useFrame(({ clock }, delta) => {
     const elapsed = clock.getElapsedTime();
-    const pixelRatio = gl.getPixelRatio();
 
     PLANETS.forEach((planet, index) => {
       const angle = elapsed * planet.speed + index * Math.PI * 0.7;
@@ -887,7 +886,7 @@ function OrbitalSystem({
 
       orbitLine.geometry.setPositions(positions);
       material.color.set(isOrbitSelected ? '#55524C' : '#2D2C29');
-      material.linewidth = (isOrbitSelected ? 2 : 1) * pixelRatio;
+      material.linewidth = isOrbitSelected ? 2.5 : 1;
       orbitLine.renderOrder = isOrbitSelected ? RING_RENDER_ORDER + 1 : GRID_RENDER_ORDER + 1;
     });
 
