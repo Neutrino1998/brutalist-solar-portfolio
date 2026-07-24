@@ -55,10 +55,12 @@ const SUN_POSITION = new THREE.Vector3(0, SUN_CENTER_Y, 0);
 
 const GAS_GIANT_VERTEX_SHADER = `
   varying vec3 vLocalPosition;
+  varying vec3 vWorldPosition;
   varying vec3 vWorldNormal;
 
   void main() {
     vLocalPosition = position;
+    vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
     vWorldNormal = normalize(mat3(modelMatrix) * normal);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
@@ -68,8 +70,10 @@ const GAS_GIANT_FRAGMENT_SHADER = `
   uniform float uTime;
   uniform vec3 uBaseColor;
   uniform vec3 uCloudColor;
+  uniform vec3 uSunPosition;
 
   varying vec3 vLocalPosition;
+  varying vec3 vWorldPosition;
   varying vec3 vWorldNormal;
 
   void main() {
@@ -84,11 +88,13 @@ const GAS_GIANT_FRAGMENT_SHADER = `
     vec3 atmosphere = mix(uBaseColor, uCloudColor, bands * 0.06);
 
     vec3 normal = normalize(vWorldNormal);
-    vec3 lightDirection = normalize(vec3(0.55, 0.8, 0.35));
+    vec3 lightDirection = normalize(uSunPosition - vWorldPosition);
     float diffuse = max(dot(normal, lightDirection), 0.0);
-    float light = 0.5 + diffuse * 0.64;
+    vec3 solarTint = vec3(1.0, 0.78, 0.58);
+    vec3 ambient = atmosphere * 0.07;
+    vec3 direct = atmosphere * solarTint * diffuse * 1.18;
 
-    gl_FragColor = vec4(atmosphere * light, 1.0);
+    gl_FragColor = vec4(ambient + direct, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
@@ -644,6 +650,7 @@ function GasGiant({
         uCloudColor: {
           value: baseColor.clone().lerp(new THREE.Color('#FFF0C9'), 0.5),
         },
+        uSunPosition: { value: SUN_POSITION },
       },
       vertexShader: GAS_GIANT_VERTEX_SHADER,
       fragmentShader: GAS_GIANT_FRAGMENT_SHADER,
@@ -672,32 +679,38 @@ function PlanetRing({ size }: { size: number }) {
     >
       <mesh>
         <ringGeometry args={[size * 1.28, size * 1.46, 128]} />
-        <meshBasicMaterial
+        <meshStandardMaterial
           color="#756D5F"
           transparent
           opacity={0.34}
           side={THREE.DoubleSide}
           depthWrite={false}
+          roughness={0.92}
+          metalness={0}
         />
       </mesh>
       <mesh>
         <ringGeometry args={[size * 1.51, size * 1.72, 128]} />
-        <meshBasicMaterial
+        <meshStandardMaterial
           color="#C1B69C"
           transparent
           opacity={0.36}
           side={THREE.DoubleSide}
           depthWrite={false}
+          roughness={0.92}
+          metalness={0}
         />
       </mesh>
       <mesh>
         <ringGeometry args={[size * 1.77, size * 1.92, 128]} />
-        <meshBasicMaterial
+        <meshStandardMaterial
           color="#918878"
           transparent
           opacity={0.24}
           side={THREE.DoubleSide}
           depthWrite={false}
+          roughness={0.92}
+          metalness={0}
         />
       </mesh>
     </group>
@@ -948,8 +961,8 @@ function OrbitalSystem({
                     <icosahedronGeometry args={[planet.size, planet.geometryDetail]} />
                     <meshStandardMaterial
                       color={planet.color}
-                      emissive={planet.id === 'projects' ? '#4F0D09' : planet.color}
-                      emissiveIntensity={0.18}
+                      emissive="#000000"
+                      emissiveIntensity={0}
                       roughness={0.86}
                       metalness={0.03}
                       flatShading
@@ -995,9 +1008,7 @@ export default function CanvasScene(props: CanvasSceneProps) {
         <fog attach="fog" args={['#121212', BASE_FOG_NEAR, BASE_FOG_FAR]} />
         <AdaptiveFog />
 
-        <ambientLight intensity={0.72} color="#DED8C4" />
-        <directionalLight position={[14, 24, 18]} intensity={2.2} color="#FFF2CE" />
-        <directionalLight position={[-16, 9, -20]} intensity={1.1} color="#BE2E21" />
+        <ambientLight intensity={0.12} color="#DED8C4" />
 
         <OrbitControls
           target={[0, -3.5, 0]}
