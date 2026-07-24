@@ -6,7 +6,7 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { ModuleId } from '../types';
-import { PLANETS, SUN_NODE } from '../data';
+import { PLANETS } from '../data';
 
 interface CanvasSceneProps {
   activeModule: ModuleId | null;
@@ -308,17 +308,9 @@ function SelectionFrame({
   );
 }
 
-function Sun({
-  activeModule,
-  focusedModule,
-  setActiveModule,
-  setFocusedModule,
-}: CanvasSceneProps) {
+function Sun() {
   const coreRef = useRef<THREE.Mesh>(null);
   const coronaRef = useRef<THREE.Mesh>(null);
-  const isFocused = focusedModule === 'sun';
-  const isActive = activeModule === 'sun';
-  const isSelected = activeModule ? isActive : isFocused;
   const glowTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
     canvas.width = 128;
@@ -358,27 +350,6 @@ function Sun({
   return (
     <group position={[0, SUN_CENTER_Y, 0]}>
       <pointLight color="#FF6A2D" intensity={950} distance={58} decay={2} />
-
-      <mesh
-        scale={1.5}
-        onPointerOver={(event) => {
-          event.stopPropagation();
-          setFocusedModule('sun');
-          document.body.style.cursor = 'pointer';
-        }}
-        onPointerOut={(event) => {
-          event.stopPropagation();
-          document.body.style.cursor = 'auto';
-        }}
-        onClick={(event) => {
-          event.stopPropagation();
-          setFocusedModule('sun');
-          setActiveModule(isActive ? null : 'sun');
-        }}
-      >
-        <sphereGeometry args={[SUN_RADIUS, 20, 20]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
 
       <sprite scale={[16, 16, 1]} renderOrder={-1}>
         <spriteMaterial
@@ -430,13 +401,6 @@ function Sun({
         />
       </mesh>
 
-      <SelectionFrame
-        visualRadius={SUN_RADIUS * 1.42}
-        index={SUN_NODE.index}
-        systemLabel={SUN_NODE.systemLabel}
-        subtitle={SUN_NODE.subtitle}
-        selected={isSelected}
-      />
     </group>
   );
 }
@@ -1041,7 +1005,7 @@ export default function CanvasScene(props: CanvasSceneProps) {
         />
 
         <OrbitalSystem {...props} />
-        <Sun {...props} />
+        <Sun />
       </Canvas>
     </div>
   );

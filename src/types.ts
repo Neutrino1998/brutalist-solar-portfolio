@@ -1,4 +1,4 @@
-export type ModuleId = 'sun' | 'profile' | 'projects' | 'skills' | 'contact';
+export type ModuleId = 'profile' | 'projects' | 'skills' | 'contact';
 
 export type PlanetClass = 'rocky' | 'gas-giant';
 
