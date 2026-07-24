@@ -670,95 +670,106 @@ function GasGiant({
   );
 }
 
-const RING_SHADOW_BANDS = [
-  [1.28, 1.46],
-  [1.51, 1.72],
-  [1.77, 1.92],
+const PLANET_RING_BANDS = [
+  {
+    innerScale: 1.28,
+    outerScale: 1.46,
+    color: '#756D5F',
+    featherColor: '#585249',
+    shadowColor: '#3F3A34',
+    opacity: 0.34,
+  },
+  {
+    innerScale: 1.51,
+    outerScale: 1.72,
+    color: '#C1B69C',
+    featherColor: '#918875',
+    shadowColor: '#676053',
+    opacity: 0.36,
+  },
+  {
+    innerScale: 1.77,
+    outerScale: 1.92,
+    color: '#918878',
+    featherColor: '#6B6459',
+    shadowColor: '#4C4740',
+    opacity: 0.24,
+  },
 ] as const;
+const RING_SHADOW_CORE_HALF_ANGLE = 0.48;
+const RING_SHADOW_FEATHER_ANGLE = 0.18;
+const RING_SHADOW_HALF_ANGLE = RING_SHADOW_CORE_HALF_ANGLE + RING_SHADOW_FEATHER_ANGLE;
 
-function PlanetRingShadow({ size }: { size: number }) {
-  const shadowRef = useRef<THREE.Group>(null);
+function PlanetRing({ size }: { size: number }) {
+  const ringSegmentsRef = useRef<THREE.Group>(null);
   const sunInRingSpace = useMemo(() => new THREE.Vector3(), []);
 
   useFrame(() => {
-    const shadow = shadowRef.current;
-    const ringPlane = shadow?.parent;
-    if (!shadow || !ringPlane) return;
+    const ringSegments = ringSegmentsRef.current;
+    const ringPlane = ringSegments?.parent;
+    if (!ringSegments || !ringPlane) return;
 
     sunInRingSpace.copy(SUN_POSITION);
     ringPlane.worldToLocal(sunInRingSpace);
-    shadow.rotation.z = Math.atan2(sunInRingSpace.y, sunInRingSpace.x) + Math.PI;
+    ringSegments.rotation.z = Math.atan2(sunInRingSpace.y, sunInRingSpace.x) + Math.PI;
   });
 
-  return (
-    <group ref={shadowRef}>
-      {RING_SHADOW_BANDS.flatMap(([innerScale, outerScale], index) => ([
-        <mesh key={`feather-${index}`} renderOrder={RING_RENDER_ORDER + 1}>
-          <ringGeometry
-            args={[size * innerScale, size * outerScale, 48, 1, -0.75, 1.5]}
-          />
-          <meshBasicMaterial
-            color="#090807"
-            transparent
-            opacity={0.08}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>,
-        <mesh key={`core-${index}`} renderOrder={RING_RENDER_ORDER + 2}>
-          <ringGeometry
-            args={[size * innerScale, size * outerScale, 48, 1, -0.575, 1.15]}
-          />
-          <meshBasicMaterial
-            color="#090807"
-            transparent
-            opacity={0.16}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>,
-      ]))}
-    </group>
-  );
-}
-
-function PlanetRing({ size }: { size: number }) {
   return (
     <group
       rotation={[Math.PI / 2, 0, 0]}
       renderOrder={RING_RENDER_ORDER}
     >
-      <mesh>
-        <ringGeometry args={[size * 1.28, size * 1.46, 128]} />
-        <meshBasicMaterial
-          color="#756D5F"
-          transparent
-          opacity={0.34}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh>
-        <ringGeometry args={[size * 1.51, size * 1.72, 128]} />
-        <meshBasicMaterial
-          color="#C1B69C"
-          transparent
-          opacity={0.36}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh>
-        <ringGeometry args={[size * 1.77, size * 1.92, 128]} />
-        <meshBasicMaterial
-          color="#918878"
-          transparent
-          opacity={0.24}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
-      </mesh>
-      <PlanetRingShadow size={size} />
+      <group ref={ringSegmentsRef}>
+        {PLANET_RING_BANDS.flatMap((band, index) => {
+          const geometryBase = [
+            size * band.innerScale,
+            size * band.outerScale,
+            96,
+            1,
+          ] as const;
+          const materialProps = {
+            transparent: true,
+            opacity: band.opacity,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          } as const;
+
+          return [
+            <mesh key={`lit-${index}`}>
+              <ringGeometry args={[
+                ...geometryBase,
+                RING_SHADOW_HALF_ANGLE,
+                Math.PI * 2 - RING_SHADOW_HALF_ANGLE * 2,
+              ]} />
+              <meshBasicMaterial color={band.color} {...materialProps} />
+            </mesh>,
+            <mesh key={`feather-leading-${index}`}>
+              <ringGeometry args={[
+                ...geometryBase,
+                RING_SHADOW_CORE_HALF_ANGLE,
+                RING_SHADOW_FEATHER_ANGLE,
+              ]} />
+              <meshBasicMaterial color={band.featherColor} {...materialProps} />
+            </mesh>,
+            <mesh key={`shadow-${index}`}>
+              <ringGeometry args={[
+                ...geometryBase,
+                -RING_SHADOW_CORE_HALF_ANGLE,
+                RING_SHADOW_CORE_HALF_ANGLE * 2,
+              ]} />
+              <meshBasicMaterial color={band.shadowColor} {...materialProps} />
+            </mesh>,
+            <mesh key={`feather-trailing-${index}`}>
+              <ringGeometry args={[
+                ...geometryBase,
+                -RING_SHADOW_HALF_ANGLE,
+                RING_SHADOW_FEATHER_ANGLE,
+              ]} />
+              <meshBasicMaterial color={band.featherColor} {...materialProps} />
+            </mesh>,
+          ];
+        })}
+      </group>
     </group>
   );
 }
