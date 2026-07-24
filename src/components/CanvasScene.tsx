@@ -99,62 +99,6 @@ const GAS_GIANT_FRAGMENT_SHADER = `
   }
 `;
 
-const PLANET_RING_VERTEX_SHADER = `
-  varying vec3 vWorldPosition;
-  varying vec3 vPlanetCenter;
-
-  #include <fog_pars_vertex>
-
-  void main() {
-    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    vWorldPosition = worldPosition.xyz;
-    vPlanetCenter = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-    gl_Position = projectionMatrix * mvPosition;
-
-    #include <fog_vertex>
-  }
-`;
-
-const PLANET_RING_FRAGMENT_SHADER = `
-  uniform vec3 uColor;
-  uniform float uOpacity;
-  uniform float uPlanetRadius;
-  uniform vec3 uSunPosition;
-
-  varying vec3 vWorldPosition;
-  varying vec3 vPlanetCenter;
-
-  #include <fog_pars_fragment>
-
-  void main() {
-    vec3 relativePosition = vWorldPosition - vPlanetCenter;
-    vec3 directionToSun = normalize(uSunPosition - vPlanetCenter);
-    float distanceBehindPlanet = -dot(relativePosition, directionToSun);
-    vec3 shadowAxisOffset = relativePosition
-      - directionToSun * dot(relativePosition, directionToSun);
-    float distanceFromShadowAxis = length(shadowAxisOffset);
-
-    float behindPlanet = smoothstep(
-      0.0,
-      uPlanetRadius * 0.12,
-      distanceBehindPlanet
-    );
-    float insideShadow = 1.0 - smoothstep(
-      uPlanetRadius * 0.86,
-      uPlanetRadius * 1.08,
-      distanceFromShadowAxis
-    );
-    float planetShadow = behindPlanet * insideShadow;
-    float shadowBrightness = mix(1.0, 0.55, planetShadow);
-
-    gl_FragColor = vec4(uColor * shadowBrightness, uOpacity);
-    #include <tonemapping_fragment>
-    #include <colorspace_fragment>
-    #include <fog_fragment>
-  }
-`;
-
 interface AsteroidDatum {
   angle: number;
   radius: number;
@@ -726,43 +670,55 @@ function GasGiant({
   );
 }
 
-interface PlanetRingBandProps {
-  innerRadius: number;
-  outerRadius: number;
-  color: string;
-  opacity: number;
-  planetRadius: number;
-}
+const RING_SHADOW_BANDS = [
+  [1.28, 1.46],
+  [1.51, 1.72],
+  [1.77, 1.92],
+] as const;
 
-function PlanetRingBand({
-  innerRadius,
-  outerRadius,
-  color,
-  opacity,
-  planetRadius,
-}: PlanetRingBandProps) {
-  const material = useMemo(() => new THREE.ShaderMaterial({
-    uniforms: {
-      uColor: { value: new THREE.Color(color) },
-      uOpacity: { value: opacity },
-      uPlanetRadius: { value: planetRadius },
-      uSunPosition: { value: SUN_POSITION },
-    },
-    vertexShader: PLANET_RING_VERTEX_SHADER,
-    fragmentShader: PLANET_RING_FRAGMENT_SHADER,
-    transparent: true,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-    fog: true,
-  }), [color, opacity, planetRadius]);
+function PlanetRingShadow({ size }: { size: number }) {
+  const shadowRef = useRef<THREE.Group>(null);
+  const sunInRingSpace = useMemo(() => new THREE.Vector3(), []);
 
-  useEffect(() => () => material.dispose(), [material]);
+  useFrame(() => {
+    const shadow = shadowRef.current;
+    const ringPlane = shadow?.parent;
+    if (!shadow || !ringPlane) return;
+
+    sunInRingSpace.copy(SUN_POSITION);
+    ringPlane.worldToLocal(sunInRingSpace);
+    shadow.rotation.z = Math.atan2(sunInRingSpace.y, sunInRingSpace.x) + Math.PI;
+  });
 
   return (
-    <mesh>
-      <ringGeometry args={[innerRadius, outerRadius, 128]} />
-      <primitive object={material} attach="material" />
-    </mesh>
+    <group ref={shadowRef}>
+      {RING_SHADOW_BANDS.flatMap(([innerScale, outerScale], index) => ([
+        <mesh key={`feather-${index}`} renderOrder={RING_RENDER_ORDER + 1}>
+          <ringGeometry
+            args={[size * innerScale, size * outerScale, 48, 1, -0.75, 1.5]}
+          />
+          <meshBasicMaterial
+            color="#090807"
+            transparent
+            opacity={0.08}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>,
+        <mesh key={`core-${index}`} renderOrder={RING_RENDER_ORDER + 2}>
+          <ringGeometry
+            args={[size * innerScale, size * outerScale, 48, 1, -0.575, 1.15]}
+          />
+          <meshBasicMaterial
+            color="#090807"
+            transparent
+            opacity={0.16}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>,
+      ]))}
+    </group>
   );
 }
 
@@ -772,27 +728,37 @@ function PlanetRing({ size }: { size: number }) {
       rotation={[Math.PI / 2, 0, 0]}
       renderOrder={RING_RENDER_ORDER}
     >
-      <PlanetRingBand
-        innerRadius={size * 1.28}
-        outerRadius={size * 1.46}
-        color="#756D5F"
-        opacity={0.34}
-        planetRadius={size}
-      />
-      <PlanetRingBand
-        innerRadius={size * 1.51}
-        outerRadius={size * 1.72}
-        color="#C1B69C"
-        opacity={0.36}
-        planetRadius={size}
-      />
-      <PlanetRingBand
-        innerRadius={size * 1.77}
-        outerRadius={size * 1.92}
-        color="#918878"
-        opacity={0.24}
-        planetRadius={size}
-      />
+      <mesh>
+        <ringGeometry args={[size * 1.28, size * 1.46, 128]} />
+        <meshBasicMaterial
+          color="#756D5F"
+          transparent
+          opacity={0.34}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh>
+        <ringGeometry args={[size * 1.51, size * 1.72, 128]} />
+        <meshBasicMaterial
+          color="#C1B69C"
+          transparent
+          opacity={0.36}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh>
+        <ringGeometry args={[size * 1.77, size * 1.92, 128]} />
+        <meshBasicMaterial
+          color="#918878"
+          transparent
+          opacity={0.24}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <PlanetRingShadow size={size} />
     </group>
   );
 }
