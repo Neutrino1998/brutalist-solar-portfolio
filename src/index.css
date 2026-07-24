@@ -41,6 +41,7 @@
 }
 
 .planet-selection__line {
+  width: calc(2rem + 2px);
   transform: scaleX(0);
   transform-origin: left center;
 }
@@ -50,6 +51,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  margin-left: -2px;
   padding: 0.5rem 1rem;
   background-image: linear-gradient(#ded8c4, #ded8c4);
   background-repeat: no-repeat;
@@ -134,7 +136,7 @@
 
 @media (max-width: 639px) {
   .planet-selection__line {
-    width: 1rem;
+    width: calc(1rem + 2px);
   }
 
   .planet-selection__label {

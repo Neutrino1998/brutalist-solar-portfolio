@@ -248,16 +248,18 @@ function SelectionFrame({
 
     anchor.getWorldPosition(worldPosition);
     const viewportAtPlanet = viewport.getCurrentViewport(camera, worldPosition);
-    const frameSize = 2 * visualRadius * viewportAtPlanet.factor * PLANET_FRAME_PADDING;
+    const pixelRatio = window.devicePixelRatio || 1;
+    const rawFrameSize = 2 * visualRadius * viewportAtPlanet.factor * PLANET_FRAME_PADDING;
+    const frameSize = Math.round(rawFrameSize * pixelRatio) / pixelRatio;
 
     if (Math.abs(frameSize - lastFrameSize.current) < 0.05) return;
 
     frame.style.width = `${frameSize}px`;
     frame.style.height = `${frameSize}px`;
     frame.style.opacity = '1';
-    connector.style.left = `calc(50% + ${
-      frameSize / Math.SQRT2 - SELECTION_FRAME_JOIN_OVERLAP
-    }px)`;
+    const rawConnectorOffset = frameSize / Math.SQRT2 - SELECTION_FRAME_JOIN_OVERLAP;
+    const connectorOffset = Math.round(rawConnectorOffset * pixelRatio) / pixelRatio;
+    connector.style.left = `calc(50% + ${connectorOffset}px)`;
     lastFrameSize.current = frameSize;
   });
 
