@@ -48,7 +48,6 @@ const GAS_GIANT_VERTEX_SHADER = `
 const GAS_GIANT_FRAGMENT_SHADER = `
   uniform float uTime;
   uniform vec3 uBaseColor;
-  uniform vec3 uDeepColor;
   uniform vec3 uCloudColor;
 
   varying vec3 vLocalPosition;
@@ -63,8 +62,7 @@ const GAS_GIANT_FRAGMENT_SHADER = `
     float bands = 0.5 + 0.5 * sin((latitude + drift) * 10.0);
     bands = smoothstep(0.24, 0.82, bands);
 
-    vec3 atmosphere = mix(uDeepColor, uBaseColor, 0.62 + bands * 0.3);
-    atmosphere = mix(atmosphere, uCloudColor, bands * 0.12);
+    vec3 atmosphere = mix(uBaseColor, uCloudColor, bands * 0.06);
 
     vec3 normal = normalize(vWorldNormal);
     vec3 lightDirection = normalize(vec3(0.55, 0.8, 0.35));
@@ -477,9 +475,6 @@ function GasGiant({
       uniforms: {
         uTime: { value: 0 },
         uBaseColor: { value: baseColor },
-        uDeepColor: {
-          value: baseColor.clone().lerp(new THREE.Color('#3E3029'), 0.62),
-        },
         uCloudColor: {
           value: baseColor.clone().lerp(new THREE.Color('#FFF0C9'), 0.5),
         },
@@ -506,7 +501,7 @@ function GasGiant({
 function PlanetRing({ size }: { size: number }) {
   return (
     <group
-      rotation={[Math.PI / 2.35, 0.08, 0.24]}
+      rotation={[Math.PI / 2, 0, 0]}
       renderOrder={RING_RENDER_ORDER}
     >
       <mesh>
@@ -758,35 +753,38 @@ function OrbitalSystem({
             }}
           >
             <group
-              ref={(element) => { planetSpinGroups.current[index] = element; }}
               rotation={[
                 0,
                 0,
                 planet.planetClass === 'gas-giant' ? (index % 2 === 0 ? -0.12 : 0.16) : 0,
               ]}
             >
-              {planet.planetClass === 'gas-giant' ? (
-                <GasGiant
-                  color={planet.color}
-                  detail={planet.geometryDetail}
-                  size={planet.size}
-                />
-              ) : (
-                <mesh>
-                  <icosahedronGeometry args={[planet.size, planet.geometryDetail]} />
-                  <meshStandardMaterial
+              <group
+                ref={(element) => { planetSpinGroups.current[index] = element; }}
+              >
+                {planet.planetClass === 'gas-giant' ? (
+                  <GasGiant
                     color={planet.color}
-                    emissive={planet.id === 'projects' ? '#4F0D09' : planet.color}
-                    emissiveIntensity={0.18}
-                    roughness={0.86}
-                    metalness={0.03}
-                    flatShading
+                    detail={planet.geometryDetail}
+                    size={planet.size}
                   />
-                </mesh>
-              )}
-            </group>
+                ) : (
+                  <mesh>
+                    <icosahedronGeometry args={[planet.size, planet.geometryDetail]} />
+                    <meshStandardMaterial
+                      color={planet.color}
+                      emissive={planet.id === 'projects' ? '#4F0D09' : planet.color}
+                      emissiveIntensity={0.18}
+                      roughness={0.86}
+                      metalness={0.03}
+                      flatShading
+                    />
+                  </mesh>
+                )}
+              </group>
 
-            {planet.hasRings && <PlanetRing size={planet.size} />}
+              {planet.hasRings && <PlanetRing size={planet.size} />}
+            </group>
 
             <mesh scale={1.9}>
               <sphereGeometry args={[planet.size, 16, 16]} />
