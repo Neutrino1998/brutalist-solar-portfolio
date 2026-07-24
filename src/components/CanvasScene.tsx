@@ -17,6 +17,7 @@ const GRID_ROTATION_X = Math.PI / 2;
 const ORBIT_SEGMENTS = 160;
 const SUN_RADIUS = 3.35;
 const SUN_WELL_DEPTH = 7.2;
+const SUN_CENTER_Y = GRID_BASE_Y - SUN_WELL_DEPTH + SUN_RADIUS * 0.74;
 const BASE_CAMERA_DISTANCE = 54;
 const BASE_FOG_NEAR = 42;
 const BASE_FOG_FAR = 105;
@@ -33,6 +34,15 @@ const SELECTION_FRAME_Z_INDEX_RANGE: [number, number] = [7, 7];
 const ASTEROID_COUNT = 220;
 const ASTEROID_BELT_INNER_RADIUS = 15.4;
 const ASTEROID_BELT_OUTER_RADIUS = 18.1;
+const COMET_SEMI_MAJOR_AXIS = 25;
+const COMET_ECCENTRICITY = 0.68;
+const COMET_ORBIT_INCLINATION = 0.5;
+const COMET_ORBIT_AZIMUTH = -0.42;
+const COMET_BASE_SPEED = 0.035;
+const COMET_UP = new THREE.Vector3(0, 1, 0);
+const COMET_ORBIT_X_AXIS = new THREE.Vector3(1, 0, 0);
+const COMET_ORBIT_Y_AXIS = new THREE.Vector3(0, 1, 0);
+const SUN_POSITION = new THREE.Vector3(0, SUN_CENTER_Y, 0);
 
 const GAS_GIANT_VERTEX_SHADER = `
   varying vec3 vLocalPosition;
@@ -88,6 +98,26 @@ interface AsteroidDatum {
 function seededNoise(index: number, channel: number) {
   const value = Math.sin((index + 1) * (12.9898 + channel * 31.731)) * 43758.5453;
   return value - Math.floor(value);
+}
+
+function getCometOrbitPosition(
+  angle: number,
+  orbitScale: number,
+  target: THREE.Vector3,
+) {
+  const semiMajorAxis = COMET_SEMI_MAJOR_AXIS * orbitScale;
+  const semiMinorAxis = semiMajorAxis * Math.sqrt(1 - COMET_ECCENTRICITY ** 2);
+
+  target.set(
+    semiMajorAxis * (Math.cos(angle) - COMET_ECCENTRICITY),
+    0,
+    semiMinorAxis * Math.sin(angle),
+  );
+  target.applyAxisAngle(COMET_ORBIT_X_AXIS, COMET_ORBIT_INCLINATION);
+  target.applyAxisAngle(COMET_ORBIT_Y_AXIS, COMET_ORBIT_AZIMUTH);
+  target.y += SUN_CENTER_Y;
+
+  return target;
 }
 
 function getPlanetCenterOffset(size: number, hasRings = false) {
@@ -251,7 +281,6 @@ function Sun({
 }: CanvasSceneProps) {
   const coreRef = useRef<THREE.Mesh>(null);
   const coronaRef = useRef<THREE.Mesh>(null);
-  const sunY = GRID_BASE_Y - SUN_WELL_DEPTH + SUN_RADIUS * 0.74;
   const isFocused = focusedModule === 'sun';
   const isActive = activeModule === 'sun';
   const isSelected = activeModule ? isActive : isFocused;
@@ -292,7 +321,7 @@ function Sun({
   });
 
   return (
-    <group position={[0, sunY, 0]}>
+    <group position={[0, SUN_CENTER_Y, 0]}>
       <pointLight color="#FF6A2D" intensity={950} distance={58} decay={2} />
 
       <mesh
@@ -456,6 +485,121 @@ function AsteroidBelt({
       <icosahedronGeometry args={[1, 0]} />
       <meshStandardMaterial color="#9A9485" roughness={0.9} metalness={0.02} flatShading />
     </instancedMesh>
+  );
+}
+
+function Comet({ orbitScale }: { orbitScale: number }) {
+  const cometRef = useRef<THREE.Group>(null);
+  const outerTailRef = useRef<THREE.Mesh>(null);
+  const innerTailRef = useRef<THREE.Mesh>(null);
+  const angleRef = useRef(0.65);
+  const position = useMemo(() => new THREE.Vector3(), []);
+  const tailDirection = useMemo(() => new THREE.Vector3(), []);
+  const orbitLine = useMemo(() => {
+    const points = Array.from({ length: ORBIT_SEGMENTS }, (_, index) => (
+      getCometOrbitPosition(
+        (index / ORBIT_SEGMENTS) * Math.PI * 2,
+        orbitScale,
+        new THREE.Vector3(),
+      )
+    ));
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+      color: '#77736A',
+      transparent: true,
+      opacity: 0.13,
+      depthWrite: false,
+    });
+    const line = new THREE.LineLoop(geometry, material);
+    line.frustumCulled = false;
+    return line;
+  }, [orbitScale]);
+
+  useEffect(() => () => {
+    orbitLine.geometry.dispose();
+    (orbitLine.material as THREE.Material).dispose();
+  }, [orbitLine]);
+
+  useFrame((_, delta) => {
+    const comet = cometRef.current;
+    if (!comet) return;
+
+    getCometOrbitPosition(angleRef.current, orbitScale, position);
+    const furthestDistance = COMET_SEMI_MAJOR_AXIS
+      * (1 + COMET_ECCENTRICITY)
+      * orbitScale;
+    const distanceToSun = position.distanceTo(SUN_POSITION);
+    const proximity = 1 - THREE.MathUtils.clamp(distanceToSun / furthestDistance, 0, 1);
+
+    angleRef.current = (
+      angleRef.current + delta * COMET_BASE_SPEED * (1 + proximity * 1.8)
+    ) % (Math.PI * 2);
+
+    comet.position.copy(position);
+    tailDirection.copy(position).sub(SUN_POSITION).normalize();
+    comet.quaternion.setFromUnitVectors(COMET_UP, tailDirection);
+
+    const outerTailLength = 2.4 + proximity * 3.2;
+    if (outerTailRef.current) {
+      outerTailRef.current.position.y = outerTailLength / 2;
+      outerTailRef.current.scale.set(1, outerTailLength, 1);
+    }
+
+    const innerTailLength = outerTailLength * 0.68;
+    if (innerTailRef.current) {
+      innerTailRef.current.position.y = innerTailLength / 2;
+      innerTailRef.current.scale.set(1, innerTailLength, 1);
+    }
+  });
+
+  return (
+    <>
+      <primitive object={orbitLine} />
+      <group ref={cometRef}>
+        <pointLight color="#D5EEF0" intensity={18} distance={7} decay={2} />
+
+        <mesh>
+          <icosahedronGeometry args={[0.24, 2]} />
+          <meshBasicMaterial color="#F2F0E7" toneMapped={false} />
+        </mesh>
+        <mesh scale={2.1}>
+          <sphereGeometry args={[0.24, 12, 12]} />
+          <meshBasicMaterial
+            color="#BFDDE0"
+            transparent
+            opacity={0.13}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
+        </mesh>
+
+        <mesh ref={outerTailRef}>
+          <coneGeometry args={[0.42, 1, 12, 1, true]} />
+          <meshBasicMaterial
+            color="#A9C8CB"
+            transparent
+            opacity={0.12}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh ref={innerTailRef}>
+          <coneGeometry args={[0.18, 1, 10, 1, true]} />
+          <meshBasicMaterial
+            color="#E5E1D4"
+            transparent
+            opacity={0.22}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
+    </>
   );
 }
 
@@ -725,6 +869,7 @@ function OrbitalSystem({
       ))}
 
       <AsteroidBelt orbitScale={orbitScale} planetPositions={planetPositions} />
+      <Comet orbitScale={orbitScale} />
 
       {PLANETS.map((planet, index) => {
         const isFocused = focusedModule === planet.id;
