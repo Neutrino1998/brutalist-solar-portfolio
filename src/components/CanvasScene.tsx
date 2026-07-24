@@ -65,8 +65,8 @@ const GAS_GIANT_FRAGMENT_SHADER = `
     float longitude = atan(sphere.z, sphere.x);
     float latitude = sphere.y;
 
-    float drift = sin(longitude * 2.0 + uTime * 0.045) * 0.025;
-    float bands = 0.5 + 0.5 * sin((latitude + drift) * 21.0);
+    float drift = sin(longitude * 2.0 + uTime * 0.04) * 0.018;
+    float bands = 0.5 + 0.5 * sin((latitude + drift) * 10.0);
     bands = smoothstep(0.24, 0.82, bands);
 
     vec3 atmosphere = mix(uDeepColor, uBaseColor, 0.62 + bands * 0.3);
@@ -553,7 +553,7 @@ function PlanetRing({ size }: { size: number }) {
       <mesh>
         <ringGeometry args={[size * 1.77, size * 1.92, 128]} />
         <meshBasicMaterial
-          color="#9B624D"
+          color="#918878"
           transparent
           opacity={0.24}
           side={THREE.DoubleSide}
