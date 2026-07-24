@@ -862,7 +862,7 @@ function OrbitalSystem({
       }
 
       orbitLine.geometry.setPositions(positions);
-      material.color.set(isOrbitSelected ? '#DED8C4' : '#625F57');
+      material.color.set(isOrbitSelected ? '#BE2E21' : '#625F57');
       material.opacity = isOrbitSelected ? 0.68 : 0.16;
       material.linewidth = isOrbitSelected ? 2 : 1;
       orbitLine.renderOrder = isOrbitSelected ? RING_RENDER_ORDER + 1 : GRID_RENDER_ORDER + 1;
