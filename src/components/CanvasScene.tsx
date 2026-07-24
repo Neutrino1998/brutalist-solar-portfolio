@@ -25,6 +25,7 @@ const GRID_SIZE = 80;
 const GRID_FADE_END_LIMIT = GRID_SIZE / 2 - 0.5;
 const GRID_FADE_WIDTH = 5.5;
 const GRID_ORBIT_PADDING = 1.5;
+const ORBIT_LINE_GRID_CLEARANCE = 0.035;
 const RING_GRID_CLEARANCE_FACTOR = 0.35;
 const GRID_RENDER_ORDER = 0;
 const RING_RENDER_ORDER = 2;
@@ -35,14 +36,13 @@ const ASTEROID_COUNT = 220;
 const ASTEROID_BELT_INNER_RADIUS = 15.4;
 const ASTEROID_BELT_OUTER_RADIUS = 18.1;
 const COMET_SEMI_MAJOR_AXIS = 25;
-const COMET_ECCENTRICITY = 0.68;
-const COMET_ORBIT_CENTER_Y = GRID_BASE_Y + 4.2;
-const COMET_ORBIT_INCLINATION = 0.18;
+const COMET_ECCENTRICITY = 0.8;
+const COMET_MAJOR_AXIS_TILT = -0.28;
 const COMET_ORBIT_AZIMUTH = -0.42;
-const COMET_BASE_SPEED = 0.035;
+const COMET_MEAN_MOTION = 0.045;
 const COMET_UP = new THREE.Vector3(0, 1, 0);
-const COMET_ORBIT_X_AXIS = new THREE.Vector3(1, 0, 0);
 const COMET_ORBIT_Y_AXIS = new THREE.Vector3(0, 1, 0);
+const COMET_ORBIT_Z_AXIS = new THREE.Vector3(0, 0, 1);
 const SUN_POSITION = new THREE.Vector3(0, SUN_CENTER_Y, 0);
 
 const GAS_GIANT_VERTEX_SHADER = `
@@ -106,7 +106,7 @@ function getCometOrbitPosition(
   orbitScale: number,
   target: THREE.Vector3,
 ) {
-  const semiMajorAxis = COMET_SEMI_MAJOR_AXIS * orbitScale;
+  const semiMajorAxis = COMET_SEMI_MAJOR_AXIS * Math.max(orbitScale, 0.72);
   const semiMinorAxis = semiMajorAxis * Math.sqrt(1 - COMET_ECCENTRICITY ** 2);
 
   target.set(
@@ -114,11 +114,25 @@ function getCometOrbitPosition(
     0,
     semiMinorAxis * Math.sin(angle),
   );
-  target.applyAxisAngle(COMET_ORBIT_X_AXIS, COMET_ORBIT_INCLINATION);
+  target.applyAxisAngle(COMET_ORBIT_Z_AXIS, COMET_MAJOR_AXIS_TILT);
   target.applyAxisAngle(COMET_ORBIT_Y_AXIS, COMET_ORBIT_AZIMUTH);
-  target.y += COMET_ORBIT_CENTER_Y;
+  target.y += SUN_CENTER_Y;
 
   return target;
+}
+
+function solveCometEccentricAnomaly(meanAnomaly: number) {
+  let eccentricAnomaly = meanAnomaly;
+
+  for (let iteration = 0; iteration < 5; iteration += 1) {
+    eccentricAnomaly -= (
+      eccentricAnomaly
+      - COMET_ECCENTRICITY * Math.sin(eccentricAnomaly)
+      - meanAnomaly
+    ) / (1 - COMET_ECCENTRICITY * Math.cos(eccentricAnomaly));
+  }
+
+  return eccentricAnomaly;
 }
 
 function getPlanetCenterOffset(size: number, hasRings = false) {
@@ -493,7 +507,7 @@ function Comet({ orbitScale }: { orbitScale: number }) {
   const cometRef = useRef<THREE.Group>(null);
   const outerTailRef = useRef<THREE.Mesh>(null);
   const innerTailRef = useRef<THREE.Mesh>(null);
-  const angleRef = useRef(0.65);
+  const meanAnomalyRef = useRef(Math.PI * 0.82);
   const position = useMemo(() => new THREE.Vector3(), []);
   const tailDirection = useMemo(() => new THREE.Vector3(), []);
   const orbitLine = useMemo(() => {
@@ -525,16 +539,16 @@ function Comet({ orbitScale }: { orbitScale: number }) {
     const comet = cometRef.current;
     if (!comet) return;
 
-    getCometOrbitPosition(angleRef.current, orbitScale, position);
+    meanAnomalyRef.current = (
+      meanAnomalyRef.current + delta * COMET_MEAN_MOTION
+    ) % (Math.PI * 2);
+    const eccentricAnomaly = solveCometEccentricAnomaly(meanAnomalyRef.current);
+    getCometOrbitPosition(eccentricAnomaly, orbitScale, position);
     const furthestDistance = COMET_SEMI_MAJOR_AXIS
       * (1 + COMET_ECCENTRICITY)
-      * orbitScale;
+      * Math.max(orbitScale, 0.72);
     const distanceToSun = position.distanceTo(SUN_POSITION);
     const proximity = 1 - THREE.MathUtils.clamp(distanceToSun / furthestDistance, 0, 1);
-
-    angleRef.current = (
-      angleRef.current + delta * COMET_BASE_SPEED * (1 + proximity * 1.8)
-    ) % (Math.PI * 2);
 
     comet.position.copy(position);
     tailDirection.copy(position).sub(SUN_POSITION).normalize();
@@ -724,6 +738,7 @@ function OrbitalSystem({
     });
     const line = new THREE.Line(geometry, material);
     line.frustumCulled = false;
+    line.renderOrder = GRID_RENDER_ORDER + 1;
     return line;
   }), []);
   const gridMaterial = useMemo(() => new THREE.ShaderMaterial({
@@ -827,6 +842,9 @@ function OrbitalSystem({
       const positions = orbitLine.geometry.getAttribute('position') as THREE.BufferAttribute;
       const material = orbitLine.material as THREE.LineBasicMaterial;
       const radius = planet.radius * orbitScale;
+      const isOrbitSelected = activeModule
+        ? activeModule === planet.id
+        : focusedModule === planet.id;
 
       for (let pointIndex = 0; pointIndex <= ORBIT_SEGMENTS; pointIndex += 1) {
         const angle = (pointIndex / ORBIT_SEGMENTS) * Math.PI * 2;
@@ -834,13 +852,14 @@ function OrbitalSystem({
         const z = Math.sin(angle) * radius;
         const y = GRID_BASE_Y
           - getWellDepthAt(x, z, planetPositions.current)
-          + getPlanetCenterOffset(planet.size, planet.hasRings);
+          + ORBIT_LINE_GRID_CLEARANCE;
         positions.setXYZ(pointIndex, x, y, z);
       }
 
       positions.needsUpdate = true;
-      material.color.set('#625F57');
-      material.opacity = 0.2;
+      material.color.set(isOrbitSelected ? '#DED8C4' : '#625F57');
+      material.opacity = isOrbitSelected ? 0.68 : 0.16;
+      orbitLine.renderOrder = isOrbitSelected ? RING_RENDER_ORDER + 1 : GRID_RENDER_ORDER + 1;
     });
 
   });
