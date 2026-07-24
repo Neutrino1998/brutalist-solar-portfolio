@@ -862,8 +862,8 @@ function OrbitalSystem({
       }
 
       orbitLine.geometry.setPositions(positions);
-      material.color.set(isOrbitSelected ? '#9F9A8E' : '#625F57');
-      material.opacity = isOrbitSelected ? 0.62 : 0.16;
+      material.color.set(isOrbitSelected ? '#817D73' : '#625F57');
+      material.opacity = isOrbitSelected ? 0.52 : 0.16;
       material.linewidth = isOrbitSelected ? 2 : 1;
       orbitLine.renderOrder = isOrbitSelected ? RING_RENDER_ORDER + 1 : GRID_RENDER_ORDER + 1;
     });
