@@ -2,6 +2,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { ModuleId } from '../types';
 import { PLANETS, SUN_NODE } from '../data';
 
@@ -724,22 +727,22 @@ function OrbitalSystem({
 
     return { start, end: start + GRID_FADE_WIDTH };
   }, [orbitScale]);
-  const orbitLineObjects = useMemo(() => PLANETS.map(() => {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      'position',
-      new THREE.BufferAttribute(new Float32Array((ORBIT_SEGMENTS + 1) * 3), 3),
-    );
-    const material = new THREE.LineBasicMaterial({
+  const orbitLines = useMemo(() => PLANETS.map(() => {
+    const positions = new Float32Array((ORBIT_SEGMENTS + 1) * 3);
+    const geometry = new LineGeometry();
+    geometry.setPositions(positions);
+    const material = new LineMaterial({
       color: '#625F57',
       transparent: true,
       opacity: 0.2,
+      linewidth: 1,
+      worldUnits: false,
       depthWrite: false,
     });
-    const line = new THREE.Line(geometry, material);
+    const line = new Line2(geometry, material);
     line.frustumCulled = false;
     line.renderOrder = GRID_RENDER_ORDER + 1;
-    return line;
+    return { line, positions };
   }), []);
   const gridMaterial = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
@@ -787,11 +790,11 @@ function OrbitalSystem({
   }, [gridFadeRange, gridMaterial]);
 
   useEffect(() => () => {
-    orbitLineObjects.forEach((line) => {
+    orbitLines.forEach(({ line }) => {
       line.geometry.dispose();
-      (line.material as THREE.LineBasicMaterial).dispose();
+      line.material.dispose();
     });
-  }, [orbitLineObjects]);
+  }, [orbitLines]);
 
   useFrame(({ clock }, delta) => {
     const elapsed = clock.getElapsedTime();
@@ -838,9 +841,8 @@ function OrbitalSystem({
     }
 
     PLANETS.forEach((planet, orbitIndex) => {
-      const orbitLine = orbitLineObjects[orbitIndex];
-      const positions = orbitLine.geometry.getAttribute('position') as THREE.BufferAttribute;
-      const material = orbitLine.material as THREE.LineBasicMaterial;
+      const { line: orbitLine, positions } = orbitLines[orbitIndex];
+      const material = orbitLine.material;
       const radius = planet.radius * orbitScale;
       const isOrbitSelected = activeModule
         ? activeModule === planet.id
@@ -853,12 +855,16 @@ function OrbitalSystem({
         const y = GRID_BASE_Y
           - getWellDepthAt(x, z, planetPositions.current)
           + ORBIT_LINE_GRID_CLEARANCE;
-        positions.setXYZ(pointIndex, x, y, z);
+        const positionIndex = pointIndex * 3;
+        positions[positionIndex] = x;
+        positions[positionIndex + 1] = y;
+        positions[positionIndex + 2] = z;
       }
 
-      positions.needsUpdate = true;
+      orbitLine.geometry.setPositions(positions);
       material.color.set(isOrbitSelected ? '#DED8C4' : '#625F57');
       material.opacity = isOrbitSelected ? 0.68 : 0.16;
+      material.linewidth = isOrbitSelected ? 2 : 1;
       orbitLine.renderOrder = isOrbitSelected ? RING_RENDER_ORDER + 1 : GRID_RENDER_ORDER + 1;
     });
 
@@ -885,7 +891,7 @@ function OrbitalSystem({
       </mesh>
 
       {PLANETS.map((planet, index) => (
-        <primitive key={`orbit-${planet.id}`} object={orbitLineObjects[index]} />
+        <primitive key={`orbit-${planet.id}`} object={orbitLines[index].line} />
       ))}
 
       <AsteroidBelt orbitScale={orbitScale} planetPositions={planetPositions} />

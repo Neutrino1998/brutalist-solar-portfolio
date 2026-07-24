@@ -26,9 +26,6 @@ export default function OverlayUI({
   return (
     <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
       <div className="absolute inset-4 md:inset-8 border border-[#4A4842] pointer-events-none" />
-      <div className="absolute left-1/4 top-0 h-full w-px bg-[#DED8C4]/[0.07]" />
-      <div className="absolute right-1/4 top-0 h-full w-px bg-[#DED8C4]/[0.07]" />
-      <div className="absolute left-0 top-1/2 h-px w-full bg-[#DED8C4]/[0.07]" />
 
       <header className="absolute left-8 top-8 z-10 md:left-16 md:top-16">
         <h1 className="text-5xl font-black uppercase tracking-[-0.07em] leading-[0.78] text-[#DED8C4] md:text-7xl lg:text-[104px]">
