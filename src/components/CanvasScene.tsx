@@ -34,6 +34,181 @@ const ASTEROID_COUNT = 220;
 const ASTEROID_BELT_INNER_RADIUS = 15.4;
 const ASTEROID_BELT_OUTER_RADIUS = 18.1;
 
+const GAS_GIANT_VERTEX_SHADER = `
+  varying vec3 vLocalPosition;
+  varying vec3 vWorldNormal;
+
+  void main() {
+    vLocalPosition = position;
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const GAS_GIANT_FRAGMENT_SHADER = `
+  uniform float uTime;
+  uniform vec3 uBaseColor;
+  uniform vec3 uDeepColor;
+  uniform vec3 uCloudColor;
+  uniform vec3 uStormColor;
+  uniform float uStormOffset;
+
+  varying vec3 vLocalPosition;
+  varying vec3 vWorldNormal;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    return mix(
+      mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+      f.y
+    );
+  }
+
+  float angularDistance(float a, float b) {
+    return atan(sin(a - b), cos(a - b));
+  }
+
+  void main() {
+    vec3 sphere = normalize(vLocalPosition);
+    float longitude = atan(sphere.z, sphere.x);
+    float latitude = sphere.y;
+
+    float current = noise(vec2(longitude * 1.35 + uTime * 0.018, latitude * 9.0));
+    float fineCurrent = noise(vec2(longitude * 3.8 - uTime * 0.026, latitude * 21.0));
+    float warpedLatitude = latitude
+      + (current - 0.5) * 0.075
+      + sin(longitude * 3.0 + uTime * 0.08) * 0.012;
+
+    float broadBands = 0.5 + 0.5 * sin(warpedLatitude * 29.0 + fineCurrent * 2.4);
+    broadBands = smoothstep(0.18, 0.9, broadBands);
+    float narrowBands = 0.5 + 0.5 * sin(warpedLatitude * 71.0 - current * 3.0);
+    narrowBands = smoothstep(0.6, 0.96, narrowBands);
+
+    vec3 atmosphere = mix(uDeepColor, uBaseColor, 0.46 + broadBands * 0.42);
+    atmosphere = mix(atmosphere, uCloudColor, narrowBands * 0.24);
+    atmosphere *= 0.92 + (fineCurrent - 0.5) * 0.14;
+
+    float stormLongitude = -0.78 + uStormOffset + uTime * 0.022;
+    float stormLatitude = -0.22;
+    vec2 stormVector = vec2(
+      angularDistance(longitude, stormLongitude) / 0.42,
+      (latitude - stormLatitude) / 0.115
+    );
+    float stormDistance = length(stormVector);
+    float stormBody = 1.0 - smoothstep(0.72, 1.0, stormDistance);
+    float stormCore = 1.0 - smoothstep(0.16, 0.56, stormDistance);
+    float stormContour = 0.5 + 0.5 * sin(
+      stormDistance * 24.0 - atan(stormVector.y, stormVector.x) * 2.0 + uTime * 0.3
+    );
+    stormContour *= stormBody * (1.0 - stormCore);
+
+    atmosphere = mix(atmosphere, uStormColor, stormBody * 0.78);
+    atmosphere = mix(atmosphere, uCloudColor, stormContour * 0.3);
+    atmosphere = mix(atmosphere, uDeepColor, stormCore * 0.52);
+
+    float smallStormLongitude = 1.42 + uStormOffset * 0.4 - uTime * 0.014;
+    vec2 smallStormVector = vec2(
+      angularDistance(longitude, smallStormLongitude) / 0.2,
+      (latitude - 0.31) / 0.07
+    );
+    float smallStorm = 1.0 - smoothstep(0.68, 1.0, length(smallStormVector));
+    atmosphere = mix(atmosphere, uCloudColor, smallStorm * 0.42);
+
+    vec3 normal = normalize(vWorldNormal);
+    vec3 lightDirection = normalize(vec3(0.55, 0.8, 0.35));
+    float diffuse = max(dot(normal, lightDirection), 0.0);
+    float rim = pow(1.0 - abs(normal.z), 2.6);
+    float light = 0.48 + diffuse * 0.66 + rim * 0.1;
+
+    gl_FragColor = vec4(atmosphere * light, 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+const PLANET_RING_VERTEX_SHADER = `
+  varying float vRadius;
+  varying float vAngle;
+
+  void main() {
+    vRadius = length(position.xy);
+    vAngle = atan(position.y, position.x);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const PLANET_RING_FRAGMENT_SHADER = `
+  uniform float uTime;
+  uniform float uInnerRadius;
+  uniform float uOuterRadius;
+  uniform vec3 uDustColor;
+  uniform vec3 uIceColor;
+  uniform vec3 uCopperColor;
+
+  varying float vRadius;
+  varying float vAngle;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(41.37, 289.11))) * 45758.5453);
+  }
+
+  float gapMask(float value, float center, float width, float feather) {
+    float inside = smoothstep(
+      center - width - feather,
+      center - width,
+      value
+    ) * (1.0 - smoothstep(
+      center + width,
+      center + width + feather,
+      value
+    ));
+    return 1.0 - inside;
+  }
+
+  void main() {
+    float radial = clamp(
+      (vRadius - uInnerRadius) / (uOuterRadius - uInnerRadius),
+      0.0,
+      1.0
+    );
+    float edgeFade = smoothstep(0.0, 0.045, radial)
+      * (1.0 - smoothstep(0.93, 1.0, radial));
+
+    float broadRings = 0.52 + 0.48 * sin(
+      radial * 42.0 + sin(vAngle * 5.0 + uTime * 0.035) * 0.42
+    );
+    float fineRings = 0.5 + 0.5 * sin(
+      radial * 146.0 - vAngle * 0.7 + uTime * 0.025
+    );
+    float dust = hash(vec2(
+      floor(radial * 210.0),
+      floor((vAngle + 3.14159) * 18.0)
+    ));
+
+    float density = 0.2 + broadRings * 0.35 + fineRings * 0.16 + dust * 0.09;
+    density *= gapMask(radial, 0.31, 0.022, 0.012);
+    density *= gapMask(radial, 0.68, 0.014, 0.009);
+    density *= gapMask(radial, 0.82, 0.007, 0.006);
+    density *= edgeFade;
+
+    vec3 color = mix(uDustColor, uIceColor, broadRings * 0.72 + fineRings * 0.12);
+    float copperThread = smoothstep(0.88, 0.98, sin(radial * 94.0 + 1.6));
+    color = mix(color, uCopperColor, copperThread * 0.32);
+
+    gl_FragColor = vec4(color, density * 0.72);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
 interface AsteroidDatum {
   angle: number;
   radius: number;
@@ -418,6 +593,119 @@ function AsteroidBelt({
   );
 }
 
+function GasGiant({
+  color,
+  detail,
+  planetId,
+  size,
+}: {
+  color: string;
+  detail: 0 | 1 | 2;
+  planetId: ModuleId;
+  size: number;
+}) {
+  const material = useMemo(() => {
+    const baseColor = new THREE.Color(color);
+
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uBaseColor: { value: baseColor },
+        uDeepColor: {
+          value: baseColor.clone().lerp(new THREE.Color('#3E3029'), 0.62),
+        },
+        uCloudColor: {
+          value: baseColor.clone().lerp(new THREE.Color('#FFF0C9'), 0.5),
+        },
+        uStormColor: {
+          value: new THREE.Color(planetId === 'contact' ? '#B4492F' : '#9C5A3B'),
+        },
+        uStormOffset: { value: planetId === 'contact' ? 0.34 : -0.28 },
+      },
+      vertexShader: GAS_GIANT_VERTEX_SHADER,
+      fragmentShader: GAS_GIANT_FRAGMENT_SHADER,
+    });
+  }, [color, planetId]);
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  useFrame(({ clock }) => {
+    material.uniforms.uTime.value = clock.getElapsedTime();
+  });
+
+  return (
+    <>
+      <mesh>
+        <icosahedronGeometry args={[size, detail]} />
+        <primitive object={material} attach="material" />
+      </mesh>
+      <mesh scale={1.035}>
+        <icosahedronGeometry args={[size, detail]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.1}
+          side={THREE.BackSide}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+    </>
+  );
+}
+
+function PlanetRing({ size }: { size: number }) {
+  const ringRef = useRef<THREE.Group>(null);
+  const innerRadius = size * 1.28;
+  const outerRadius = size * 1.92;
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uInnerRadius: { value: innerRadius },
+      uOuterRadius: { value: outerRadius },
+      uDustColor: { value: new THREE.Color('#6F6759') },
+      uIceColor: { value: new THREE.Color('#D8CDB1') },
+      uCopperColor: { value: new THREE.Color('#A04B32') },
+    },
+    vertexShader: PLANET_RING_VERTEX_SHADER,
+    fragmentShader: PLANET_RING_FRAGMENT_SHADER,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  }), [innerRadius, outerRadius]);
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  useFrame(({ clock }, delta) => {
+    material.uniforms.uTime.value = clock.getElapsedTime();
+    if (ringRef.current) ringRef.current.rotation.z += delta * 0.012;
+  });
+
+  return (
+    <group
+      ref={ringRef}
+      rotation={[Math.PI / 2.35, 0.08, 0.24]}
+      renderOrder={RING_RENDER_ORDER}
+    >
+      <mesh>
+        <ringGeometry args={[innerRadius, outerRadius, 192, 1]} />
+        <primitive object={material} attach="material" />
+      </mesh>
+      <mesh rotation={[0, 0, 0.006]}>
+        <ringGeometry args={[size * 1.17, size * 1.245, 192, 1]} />
+        <meshBasicMaterial
+          color="#8E604C"
+          transparent
+          opacity={0.2}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 interface OrbitalSystemProps extends CanvasSceneProps {}
 
 function OrbitalSystem({
@@ -436,7 +724,7 @@ function OrbitalSystem({
     const orbitalEnvelope = Math.max(...PLANETS.map((planet) => (
       planet.radius * orbitScale
       + planet.size
-        * (planet.hasRings ? 1.82 : 1)
+        * (planet.hasRings ? 1.92 : 1)
     )));
     const start = Math.min(
       orbitalEnvelope + GRID_ORBIT_PADDING,
@@ -535,8 +823,12 @@ function OrbitalSystem({
       planetGroups.current[index]?.position.copy(position);
       const spinGroup = planetSpinGroups.current[index];
       if (spinGroup) {
-        spinGroup.rotation.x += delta * (0.18 + index * 0.025);
-        spinGroup.rotation.y += delta * (0.34 + index * 0.035);
+        if (planet.planetClass === 'gas-giant') {
+          spinGroup.rotation.y += delta * (0.16 + index * 0.02);
+        } else {
+          spinGroup.rotation.x += delta * (0.18 + index * 0.025);
+          spinGroup.rotation.y += delta * (0.34 + index * 0.035);
+        }
       }
     });
 
@@ -606,7 +898,7 @@ function OrbitalSystem({
         const isFocused = focusedModule === planet.id;
         const isActive = activeModule === planet.id;
         const isSelected = activeModule ? isActive : isFocused;
-        const visualRadius = planet.size * (planet.hasRings ? 1.82 : 1);
+        const visualRadius = planet.size * (planet.hasRings ? 1.92 : 1);
 
         return (
           <group
@@ -630,45 +922,35 @@ function OrbitalSystem({
           >
             <group
               ref={(element) => { planetSpinGroups.current[index] = element; }}
+              rotation={[
+                0,
+                0,
+                planet.planetClass === 'gas-giant' ? (index % 2 === 0 ? -0.12 : 0.16) : 0,
+              ]}
             >
-              <mesh>
-                <icosahedronGeometry args={[planet.size, planet.geometryDetail]} />
-                <meshStandardMaterial
+              {planet.planetClass === 'gas-giant' ? (
+                <GasGiant
                   color={planet.color}
-                  emissive={planet.id === 'projects' ? '#4F0D09' : planet.color}
-                  emissiveIntensity={0.18}
-                  roughness={planet.planetClass === 'rocky' ? 0.86 : 0.62}
-                  metalness={0.03}
-                  flatShading
+                  detail={planet.geometryDetail}
+                  planetId={planet.id}
+                  size={planet.size}
                 />
-              </mesh>
-
-              {planet.planetClass === 'gas-giant' && [-0.34, 0, 0.34].map((latitude) => {
-                const bandRadius = planet.size * Math.sqrt(1 - latitude * latitude);
-                return (
-                  <mesh key={latitude} position={[0, planet.size * latitude, 0]} rotation={[Math.PI / 2, 0, 0]}>
-                    <torusGeometry args={[bandRadius, planet.size * 0.016, 5, 64]} />
-                    <meshBasicMaterial color="#635B4C" transparent opacity={0.48} depthWrite={false} />
-                  </mesh>
-                );
-              })}
+              ) : (
+                <mesh>
+                  <icosahedronGeometry args={[planet.size, planet.geometryDetail]} />
+                  <meshStandardMaterial
+                    color={planet.color}
+                    emissive={planet.id === 'projects' ? '#4F0D09' : planet.color}
+                    emissiveIntensity={0.18}
+                    roughness={0.86}
+                    metalness={0.03}
+                    flatShading
+                  />
+                </mesh>
+              )}
             </group>
 
-            {planet.hasRings && (
-              <mesh
-                rotation={[Math.PI / 2.35, 0.08, 0.24]}
-                renderOrder={RING_RENDER_ORDER}
-              >
-                <ringGeometry args={[planet.size * 1.34, planet.size * 1.82, 96]} />
-                <meshBasicMaterial
-                  color="#AAA087"
-                  transparent
-                  opacity={0.38}
-                  side={THREE.DoubleSide}
-                  depthWrite={false}
-                />
-              </mesh>
-            )}
+            {planet.hasRings && <PlanetRing size={planet.size} />}
 
             <mesh scale={1.9}>
               <sphereGeometry args={[planet.size, 16, 16]} />
