@@ -53,45 +53,24 @@ const COMET_ORBIT_Y_AXIS = new THREE.Vector3(0, 1, 0);
 const COMET_ORBIT_Z_AXIS = new THREE.Vector3(0, 0, 1);
 const SUN_POSITION = new THREE.Vector3(0, SUN_CENTER_Y, 0);
 
-const GAS_GIANT_VERTEX_SHADER = `
-  varying vec3 vLocalPosition;
-  varying vec3 vWorldNormal;
-
-  void main() {
-    vLocalPosition = position;
-    vWorldNormal = normalize(mat3(modelMatrix) * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const GAS_GIANT_FRAGMENT_SHADER = `
+const GAS_GIANT_FRAGMENT_DECLARATIONS = `
   uniform float uTime;
   uniform vec3 uBaseColor;
   uniform vec3 uCloudColor;
 
   varying vec3 vLocalPosition;
-  varying vec3 vWorldNormal;
+`;
 
-  void main() {
-    vec3 sphere = normalize(vLocalPosition);
-    float longitude = atan(sphere.z, sphere.x);
-    float latitude = sphere.y;
+const GAS_GIANT_SURFACE_SHADER = `
+  vec3 sphere = normalize(vLocalPosition);
+  float longitude = atan(sphere.z, sphere.x);
+  float latitude = sphere.y;
 
-    float drift = sin(longitude * 2.0 + uTime * 0.04) * 0.018;
-    float bands = 0.5 + 0.5 * sin((latitude + drift) * 10.0);
-    bands = smoothstep(0.24, 0.82, bands);
+  float drift = sin(longitude * 2.0 + uTime * 0.04) * 0.018;
+  float bands = 0.5 + 0.5 * sin((latitude + drift) * 10.0);
+  bands = smoothstep(0.24, 0.82, bands);
 
-    vec3 atmosphere = mix(uBaseColor, uCloudColor, bands * 0.06);
-
-    vec3 normal = normalize(vWorldNormal);
-    vec3 lightDirection = normalize(vec3(0.55, 0.8, 0.35));
-    float diffuse = max(dot(normal, lightDirection), 0.0);
-    float light = 0.5 + diffuse * 0.64;
-
-    gl_FragColor = vec4(atmosphere * light, 1.0);
-    #include <tonemapping_fragment>
-    #include <colorspace_fragment>
-  }
+  diffuseColor.rgb = mix(uBaseColor, uCloudColor, bands * 0.06);
 `;
 
 interface AsteroidDatum {
@@ -634,26 +613,51 @@ function GasGiant({
   detail: 0 | 1 | 2;
   size: number;
 }) {
-  const material = useMemo(() => {
+  const { material, uniforms } = useMemo(() => {
     const baseColor = new THREE.Color(color);
-
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-        uBaseColor: { value: baseColor },
-        uCloudColor: {
-          value: baseColor.clone().lerp(new THREE.Color('#FFF0C9'), 0.5),
-        },
+    const shaderUniforms = {
+      uTime: { value: 0 },
+      uBaseColor: { value: baseColor },
+      uCloudColor: {
+        value: baseColor.clone().lerp(new THREE.Color('#FFF0C9'), 0.5),
       },
-      vertexShader: GAS_GIANT_VERTEX_SHADER,
-      fragmentShader: GAS_GIANT_FRAGMENT_SHADER,
+    };
+    const standardMaterial = new THREE.MeshStandardMaterial({
+      color: '#FFFFFF',
+      roughness: 0.86,
+      metalness: 0.03,
     });
+
+    standardMaterial.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, shaderUniforms);
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          '#include <common>',
+          '#include <common>\nvarying vec3 vLocalPosition;',
+        )
+        .replace(
+          '#include <begin_vertex>',
+          '#include <begin_vertex>\nvLocalPosition = position;',
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          '#include <common>',
+          `#include <common>\n${GAS_GIANT_FRAGMENT_DECLARATIONS}`,
+        )
+        .replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>\n${GAS_GIANT_SURFACE_SHADER}`,
+        );
+    };
+    standardMaterial.customProgramCacheKey = () => 'gas-giant-scene-lighting-v1';
+
+    return { material: standardMaterial, uniforms: shaderUniforms };
   }, [color]);
 
   useEffect(() => () => material.dispose(), [material]);
 
   useFrame(({ clock }) => {
-    material.uniforms.uTime.value = clock.getElapsedTime();
+    uniforms.uTime.value = clock.getElapsedTime();
   });
 
   return (
