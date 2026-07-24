@@ -33,7 +33,7 @@ const RING_GRID_CLEARANCE_FACTOR = 0.35;
 const GRID_RENDER_ORDER = 0;
 const RING_RENDER_ORDER = 2;
 const PLANET_FRAME_PADDING = 1.22;
-const SELECTION_FRAME_JOIN_OVERLAP = 1;
+const SELECTION_FRAME_JOIN_OVERLAP = 4;
 const SELECTION_FRAME_Z_INDEX_RANGE: [number, number] = [7, 7];
 const ASTEROID_COUNT = 220;
 const ASTEROID_BELT_INNER_RADIUS = 15.4;
@@ -235,31 +235,34 @@ function SelectionFrame({
 }: SelectionFrameProps) {
   const { camera, viewport } = useThree();
   const anchorRef = useRef<THREE.Group>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLSpanElement>(null);
   const connectorRef = useRef<HTMLSpanElement>(null);
   const worldPosition = useMemo(() => new THREE.Vector3(), []);
   const lastFrameSize = useRef(0);
 
   useFrame(() => {
     const anchor = anchorRef.current;
+    const root = rootRef.current;
     const frame = frameRef.current;
     const connector = connectorRef.current;
-    if (!anchor || !frame || !connector) return;
+    if (!anchor || !root || !frame || !connector) return;
 
     anchor.getWorldPosition(worldPosition);
     const viewportAtPlanet = viewport.getCurrentViewport(camera, worldPosition);
     const pixelRatio = window.devicePixelRatio || 1;
-    const rawFrameSize = 2 * visualRadius * viewportAtPlanet.factor * PLANET_FRAME_PADDING;
-    const frameSize = Math.round(rawFrameSize * pixelRatio) / pixelRatio;
+    const frameSize = 2 * visualRadius * viewportAtPlanet.factor * PLANET_FRAME_PADDING;
 
     if (Math.abs(frameSize - lastFrameSize.current) < 0.05) return;
 
     frame.style.width = `${frameSize}px`;
     frame.style.height = `${frameSize}px`;
-    frame.style.opacity = '1';
+    frame.style.left = `${-frameSize / 2}px`;
+    frame.style.top = `${-frameSize / 2}px`;
+    root.style.opacity = '1';
     const rawConnectorOffset = frameSize / Math.SQRT2 - SELECTION_FRAME_JOIN_OVERLAP;
     const connectorOffset = Math.round(rawConnectorOffset * pixelRatio) / pixelRatio;
-    connector.style.left = `calc(50% + ${connectorOffset}px)`;
+    connector.style.left = `${connectorOffset}px`;
     lastFrameSize.current = frameSize;
   });
 
@@ -268,23 +271,21 @@ function SelectionFrame({
       <Html
         wrapperClass="pointer-events-none"
         position={[0, 0, 0]}
-        center
         calculatePosition={calculatePixelAlignedPosition}
         zIndexRange={selected ? [8, 8] : SELECTION_FRAME_Z_INDEX_RANGE}
       >
         <div
-          ref={frameRef}
-          className="planet-selection pointer-events-none relative opacity-0"
+          ref={rootRef}
+          className="planet-selection pointer-events-none relative h-0 w-0 opacity-0"
           data-selected={selected}
           aria-hidden="true"
-          style={{ width: 0, height: 0 }}
         >
-          <span className="planet-selection__frame absolute inset-0 border-2 border-[#DED8C4]" />
+          <span ref={frameRef} className="planet-selection__frame absolute border-2 border-[#DED8C4]" />
           <span
             ref={connectorRef}
-            className="planet-selection__connector absolute top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
+            className="planet-selection__connector absolute flex items-center whitespace-nowrap"
           >
-            <span className="planet-selection__line h-0.5 w-8 bg-[#DED8C4]" />
+            <span className="planet-selection__line h-0.5 w-8" />
             <span className="planet-selection__label border-l-2 border-[#DED8C4]">
               <span className="planet-selection__label-base block">
                 <span className="planet-selection__meta block text-[10px] font-black uppercase tracking-[0.2em] text-[#BE2E21]">

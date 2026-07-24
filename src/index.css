@@ -16,8 +16,8 @@
 }
 
 @keyframes connector-line-in {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  from { background-size: 0% 100%; }
+  to { background-size: 100% 100%; }
 }
 
 @keyframes label-fill-in {
@@ -38,20 +38,26 @@
 
 .planet-selection__connector {
   z-index: 1;
+  top: -28px;
 }
 
 .planet-selection__line {
-  width: calc(2rem + 2px);
-  transform: scaleX(0);
-  transform-origin: left center;
+  width: calc(2rem + 5px);
+  background-image: linear-gradient(#ded8c4, #ded8c4);
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 0% 100%;
 }
 
 .planet-selection__label {
   display: block;
   position: relative;
+  box-sizing: border-box;
   isolation: isolate;
   overflow: hidden;
   margin-left: -2px;
+  width: 180px;
+  height: 56px;
   padding: 0.5rem 1rem;
   background-image: linear-gradient(#ded8c4, #ded8c4);
   background-repeat: no-repeat;
@@ -136,10 +142,16 @@
 
 @media (max-width: 639px) {
   .planet-selection__line {
-    width: calc(1rem + 2px);
+    width: calc(1rem + 5px);
+  }
+
+  .planet-selection__connector {
+    top: -21px;
   }
 
   .planet-selection__label {
+    width: 132px;
+    height: 42px;
     padding: 0.35rem 0.55rem;
   }
 
