@@ -50,15 +50,9 @@ const GAS_GIANT_FRAGMENT_SHADER = `
   uniform vec3 uBaseColor;
   uniform vec3 uDeepColor;
   uniform vec3 uCloudColor;
-  uniform vec3 uStormColor;
-  uniform float uStormOffset;
 
   varying vec3 vLocalPosition;
   varying vec3 vWorldNormal;
-
-  float angularDistance(float a, float b) {
-    return atan(sin(a - b), cos(a - b));
-  }
 
   void main() {
     vec3 sphere = normalize(vLocalPosition);
@@ -71,15 +65,6 @@ const GAS_GIANT_FRAGMENT_SHADER = `
 
     vec3 atmosphere = mix(uDeepColor, uBaseColor, 0.62 + bands * 0.3);
     atmosphere = mix(atmosphere, uCloudColor, bands * 0.12);
-
-    float stormLongitude = -0.72 + uStormOffset + uTime * 0.018;
-    vec2 stormVector = vec2(
-      angularDistance(longitude, stormLongitude) / 0.34,
-      (latitude + 0.2) / 0.105
-    );
-    float stormDistance = length(stormVector);
-    float storm = 1.0 - smoothstep(0.68, 1.0, stormDistance);
-    atmosphere = mix(atmosphere, uStormColor, storm * 0.58);
 
     vec3 normal = normalize(vWorldNormal);
     vec3 lightDirection = normalize(vec3(0.55, 0.8, 0.35));
@@ -479,12 +464,10 @@ function AsteroidBelt({
 function GasGiant({
   color,
   detail,
-  planetId,
   size,
 }: {
   color: string;
   detail: 0 | 1 | 2;
-  planetId: ModuleId;
   size: number;
 }) {
   const material = useMemo(() => {
@@ -500,15 +483,11 @@ function GasGiant({
         uCloudColor: {
           value: baseColor.clone().lerp(new THREE.Color('#FFF0C9'), 0.5),
         },
-        uStormColor: {
-          value: new THREE.Color(planetId === 'contact' ? '#B4492F' : '#9C5A3B'),
-        },
-        uStormOffset: { value: planetId === 'contact' ? 0.34 : -0.28 },
       },
       vertexShader: GAS_GIANT_VERTEX_SHADER,
       fragmentShader: GAS_GIANT_FRAGMENT_SHADER,
     });
-  }, [color, planetId]);
+  }, [color]);
 
   useEffect(() => () => material.dispose(), [material]);
 
@@ -790,7 +769,6 @@ function OrbitalSystem({
                 <GasGiant
                   color={planet.color}
                   detail={planet.geometryDetail}
-                  planetId={planet.id}
                   size={planet.size}
                 />
               ) : (
