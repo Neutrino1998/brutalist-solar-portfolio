@@ -981,12 +981,15 @@ function OrbitalSystem({
 }
 
 export default function CanvasScene(props: CanvasSceneProps) {
+  const dismissActiveModule = () => props.setActiveModule(null);
+
   return (
     <div className="absolute inset-0 z-0">
       <Canvas
         camera={{ position: [0, 28, 43], fov: 44 }}
         dpr={[1, 1.75]}
         gl={{ antialias: true, alpha: true, stencil: true }}
+        onPointerMissed={dismissActiveModule}
       >
         <ResponsiveCamera />
         <fog attach="fog" args={['#121212', BASE_FOG_NEAR, BASE_FOG_FAR]} />
@@ -1009,8 +1012,15 @@ export default function CanvasScene(props: CanvasSceneProps) {
           maxDistance={110}
         />
 
-        <OrbitalSystem {...props} />
-        <Sun />
+        <group
+          onClick={(event) => {
+            event.stopPropagation();
+            dismissActiveModule();
+          }}
+        >
+          <OrbitalSystem {...props} />
+          <Sun />
+        </group>
       </Canvas>
     </div>
   );
