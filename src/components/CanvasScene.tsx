@@ -43,6 +43,8 @@ const COMET_ECCENTRICITY = 0.8;
 const COMET_MAJOR_AXIS_TILT = -0.28;
 const COMET_ORBIT_AZIMUTH = -0.42;
 const COMET_MEAN_MOTION = 0.045;
+const COMET_GLOW_RADIUS = 0.42;
+const COMET_TAIL_START = COMET_GLOW_RADIUS + 0.04;
 const COMET_UP = new THREE.Vector3(0, 1, 0);
 const COMET_ORBIT_Y_AXIS = new THREE.Vector3(0, 1, 0);
 const COMET_ORBIT_Z_AXIS = new THREE.Vector3(0, 0, 1);
@@ -509,7 +511,6 @@ function AsteroidBelt({
 function Comet({ orbitScale }: { orbitScale: number }) {
   const cometRef = useRef<THREE.Group>(null);
   const outerTailRef = useRef<THREE.Mesh>(null);
-  const innerTailRef = useRef<THREE.Mesh>(null);
   const meanAnomalyRef = useRef(Math.PI * 0.82);
   const position = useMemo(() => new THREE.Vector3(), []);
   const tailDirection = useMemo(() => new THREE.Vector3(), []);
@@ -559,14 +560,8 @@ function Comet({ orbitScale }: { orbitScale: number }) {
 
     const outerTailLength = 2.4 + proximity * 3.2;
     if (outerTailRef.current) {
-      outerTailRef.current.position.y = outerTailLength / 2;
+      outerTailRef.current.position.y = COMET_TAIL_START + outerTailLength / 2;
       outerTailRef.current.scale.set(1, outerTailLength, 1);
-    }
-
-    const innerTailLength = outerTailLength * 0.68;
-    if (innerTailRef.current) {
-      innerTailRef.current.position.y = innerTailLength / 2;
-      innerTailRef.current.scale.set(1, innerTailLength, 1);
     }
   });
 
@@ -580,39 +575,26 @@ function Comet({ orbitScale }: { orbitScale: number }) {
           <icosahedronGeometry args={[0.24, 2]} />
           <meshBasicMaterial color="#F2F0E7" toneMapped={false} />
         </mesh>
-        <mesh scale={2.1}>
-          <sphereGeometry args={[0.24, 12, 12]} />
+        <mesh>
+          <sphereGeometry args={[COMET_GLOW_RADIUS, 16, 16]} />
           <meshBasicMaterial
             color="#BFDDE0"
             transparent
-            opacity={0.13}
+            opacity={0.11}
+            side={THREE.FrontSide}
             depthWrite={false}
-            blending={THREE.AdditiveBlending}
             toneMapped={false}
           />
         </mesh>
 
         <mesh ref={outerTailRef}>
-          <coneGeometry args={[0.42, 1, 12, 1, true]} />
+          <coneGeometry args={[0.24, 1, 12, 1, true]} />
           <meshBasicMaterial
             color="#A9C8CB"
             transparent
-            opacity={0.12}
-            side={THREE.DoubleSide}
+            opacity={0.16}
+            side={THREE.FrontSide}
             depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            toneMapped={false}
-          />
-        </mesh>
-        <mesh ref={innerTailRef}>
-          <coneGeometry args={[0.18, 1, 10, 1, true]} />
-          <meshBasicMaterial
-            color="#E5E1D4"
-            transparent
-            opacity={0.22}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
             toneMapped={false}
           />
         </mesh>
@@ -732,12 +714,11 @@ function OrbitalSystem({
     const geometry = new LineGeometry();
     geometry.setPositions(positions);
     const material = new LineMaterial({
-      color: '#625F57',
-      transparent: true,
-      opacity: 0.2,
+      color: '#2D2C29',
       linewidth: 1,
       worldUnits: false,
       depthWrite: false,
+      alphaToCoverage: true,
     });
     const line = new Line2(geometry, material);
     line.frustumCulled = false;
@@ -862,8 +843,7 @@ function OrbitalSystem({
       }
 
       orbitLine.geometry.setPositions(positions);
-      material.color.set(isOrbitSelected ? '#817D73' : '#625F57');
-      material.opacity = isOrbitSelected ? 0.52 : 0.16;
+      material.color.set(isOrbitSelected ? '#55524C' : '#2D2C29');
       material.linewidth = isOrbitSelected ? 2 : 1;
       orbitLine.renderOrder = isOrbitSelected ? RING_RENDER_ORDER + 1 : GRID_RENDER_ORDER + 1;
     });
