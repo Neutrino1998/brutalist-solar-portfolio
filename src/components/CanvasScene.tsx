@@ -36,7 +36,8 @@ const ASTEROID_BELT_INNER_RADIUS = 15.4;
 const ASTEROID_BELT_OUTER_RADIUS = 18.1;
 const COMET_SEMI_MAJOR_AXIS = 25;
 const COMET_ECCENTRICITY = 0.68;
-const COMET_ORBIT_INCLINATION = 0.5;
+const COMET_ORBIT_CENTER_Y = GRID_BASE_Y + 4.2;
+const COMET_ORBIT_INCLINATION = 0.18;
 const COMET_ORBIT_AZIMUTH = -0.42;
 const COMET_BASE_SPEED = 0.035;
 const COMET_UP = new THREE.Vector3(0, 1, 0);
@@ -115,7 +116,7 @@ function getCometOrbitPosition(
   );
   target.applyAxisAngle(COMET_ORBIT_X_AXIS, COMET_ORBIT_INCLINATION);
   target.applyAxisAngle(COMET_ORBIT_Y_AXIS, COMET_ORBIT_AZIMUTH);
-  target.y += SUN_CENTER_Y;
+  target.y += COMET_ORBIT_CENTER_Y;
 
   return target;
 }
