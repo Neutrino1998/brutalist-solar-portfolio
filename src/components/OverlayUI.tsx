@@ -59,15 +59,11 @@ export default function OverlayUI({
               onMouseEnter={() => setFocusedModule(node.id)}
               onFocus={() => setFocusedModule(node.id)}
               onClick={() => openModule(node.id)}
-              className={`group flex h-9 min-w-10 items-center justify-between gap-4 border px-2 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-colors md:min-w-44 md:px-3 ${
-                isFocused
-                  ? 'border-[#DED8C4] bg-[#DED8C4] text-[#121212]'
-                  : 'border-[#5A5750] bg-[#121212]/70 text-[#DED8C4] hover:border-[#DED8C4]'
-              }`}
+              className={`module-nav-button group relative isolate flex h-9 min-w-10 items-center justify-between gap-4 overflow-hidden border px-2 text-left text-[10px] font-black uppercase tracking-[0.16em] md:min-w-44 md:px-3 ${isFocused ? 'is-focused' : ''}`}
             >
-              <span className="text-xs">{node.index}</span>
-              <span className="hidden md:inline">{node.subtitle}</span>
-              <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-[#BE2E21]' : isFocused ? 'bg-[#121212]' : 'bg-[#5A5750]'}`} />
+              <span className="relative z-10 text-xs">{node.index}</span>
+              <span className="relative z-10 hidden md:inline">{node.subtitle}</span>
+              <span className={`module-nav-button__status relative z-10 h-1.5 w-1.5 rounded-full ${isActive ? 'is-active' : ''}`} />
             </button>
           );
         })}

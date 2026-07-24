@@ -205,6 +205,7 @@ interface SelectionFrameProps {
   index: string;
   systemLabel: string;
   subtitle: string;
+  selected: boolean;
 }
 
 const selectionFrameScreenPosition = new THREE.Vector3();
@@ -230,6 +231,7 @@ function SelectionFrame({
   index,
   systemLabel,
   subtitle,
+  selected,
 }: SelectionFrameProps) {
   const { camera, viewport } = useThree();
   const anchorRef = useRef<THREE.Group>(null);
@@ -266,25 +268,37 @@ function SelectionFrame({
         position={[0, 0, 0]}
         center
         calculatePosition={calculatePixelAlignedPosition}
-        zIndexRange={SELECTION_FRAME_Z_INDEX_RANGE}
+        zIndexRange={selected ? [8, 8] : SELECTION_FRAME_Z_INDEX_RANGE}
       >
         <div
           ref={frameRef}
-          className="pointer-events-none relative opacity-0"
+          className="planet-selection pointer-events-none relative opacity-0"
+          data-selected={selected}
+          aria-hidden="true"
           style={{ width: 0, height: 0 }}
         >
-          <span className="absolute inset-0 rotate-45 border-2 border-[#DED8C4]" />
+          <span className="planet-selection__frame absolute inset-0 border-2 border-[#DED8C4]" />
           <span
             ref={connectorRef}
-            className="absolute top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
+            className="planet-selection__connector absolute top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
           >
-            <span className="h-0.5 w-8 bg-[#DED8C4]" />
-            <span className="border-l-2 border-[#DED8C4] pl-4">
-              <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#BE2E21]">
-                {index} / {systemLabel}
+            <span className="planet-selection__line h-0.5 w-8 bg-[#DED8C4]" />
+            <span className="planet-selection__label border-l-2 border-[#DED8C4]">
+              <span className="planet-selection__label-base block">
+                <span className="planet-selection__meta block text-[10px] font-black uppercase tracking-[0.2em] text-[#BE2E21]">
+                  {index} / {systemLabel}
+                </span>
+                <span className="planet-selection__title mt-1 block text-xl font-black italic uppercase leading-none text-[#DED8C4]">
+                  {subtitle}
+                </span>
               </span>
-              <span className="mt-1 block text-xl font-black italic uppercase leading-none text-[#DED8C4]">
-                {subtitle}
+              <span className="planet-selection__label-active absolute inset-0 block" aria-hidden="true">
+                <span className="planet-selection__meta block text-[10px] font-black uppercase tracking-[0.2em] text-[#121212]">
+                  {index} / {systemLabel}
+                </span>
+                <span className="planet-selection__title mt-1 block text-xl font-black italic uppercase leading-none text-[#121212]">
+                  {subtitle}
+                </span>
               </span>
             </span>
           </span>
@@ -416,14 +430,13 @@ function Sun({
         />
       </mesh>
 
-      {isSelected && (
-        <SelectionFrame
-          visualRadius={SUN_RADIUS * 1.42}
-          index={SUN_NODE.index}
-          systemLabel={SUN_NODE.systemLabel}
-          subtitle={SUN_NODE.subtitle}
-        />
-      )}
+      <SelectionFrame
+        visualRadius={SUN_RADIUS * 1.42}
+        index={SUN_NODE.index}
+        systemLabel={SUN_NODE.systemLabel}
+        subtitle={SUN_NODE.subtitle}
+        selected={isSelected}
+      />
     </group>
   );
 }
@@ -984,14 +997,13 @@ function OrbitalSystem({
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
 
-            {isSelected && (
-              <SelectionFrame
-                visualRadius={visualRadius}
-                index={planet.index}
-                systemLabel={planet.systemLabel}
-                subtitle={planet.subtitle}
-              />
-            )}
+            <SelectionFrame
+              visualRadius={visualRadius}
+              index={planet.index}
+              systemLabel={planet.systemLabel}
+              subtitle={planet.subtitle}
+              selected={isSelected}
+            />
           </group>
         );
       })}

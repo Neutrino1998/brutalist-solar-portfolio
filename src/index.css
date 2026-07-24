@@ -1,1 +1,176 @@
 @import "tailwindcss";
+
+@keyframes planet-frame-in {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg) scale(0.62);
+  }
+  68% {
+    opacity: 1;
+    transform: rotate(49deg) scale(1.035);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+@keyframes connector-line-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes label-fill-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes label-copy-in {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+.planet-selection__frame {
+  opacity: 0;
+  transform: rotate(0deg) scale(0.62);
+  transform-origin: center;
+}
+
+.planet-selection__connector {
+  z-index: 1;
+}
+
+.planet-selection__line {
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.planet-selection__label {
+  display: block;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 0.5rem 1rem;
+}
+
+.planet-selection__label::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: #ded8c4;
+  content: '';
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.planet-selection__label-base {
+  position: relative;
+  z-index: 0;
+}
+
+.planet-selection__label-active {
+  z-index: 2;
+  padding: 0.5rem 1rem;
+  clip-path: inset(0 100% 0 0);
+}
+
+.planet-selection[data-selected='true'] .planet-selection__frame {
+  animation: planet-frame-in 420ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+.planet-selection[data-selected='true'] .planet-selection__line {
+  animation: connector-line-in 260ms cubic-bezier(0.22, 1, 0.36, 1) 310ms both;
+}
+
+.planet-selection[data-selected='true'] .planet-selection__label::before {
+  animation: label-fill-in 360ms cubic-bezier(0.65, 0, 0.35, 1) 520ms both;
+}
+
+.planet-selection[data-selected='true'] .planet-selection__label-active {
+  animation: label-copy-in 360ms cubic-bezier(0.65, 0, 0.35, 1) 520ms both;
+}
+
+.module-nav-button {
+  border-color: #5a5750;
+  background: rgb(18 18 18 / 70%);
+  color: #ded8c4;
+  transition: border-color 180ms ease, color 120ms ease;
+}
+
+.module-nav-button::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: #ded8c4;
+  content: '';
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 360ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.module-nav-button:hover,
+.module-nav-button:focus-visible,
+.module-nav-button.is-focused {
+  border-color: #ded8c4;
+}
+
+.module-nav-button.is-focused {
+  color: #121212;
+  transition-delay: 140ms;
+}
+
+.module-nav-button.is-focused::before {
+  transform: scaleX(1);
+}
+
+.module-nav-button__status {
+  background: #5a5750;
+  transition: background-color 140ms ease 120ms;
+}
+
+.module-nav-button.is-focused .module-nav-button__status {
+  background: #121212;
+}
+
+.module-nav-button .module-nav-button__status.is-active {
+  background: #be2e21;
+}
+
+@media (max-width: 639px) {
+  .planet-selection__line {
+    width: 1rem;
+  }
+
+  .planet-selection__label {
+    padding: 0.35rem 0.55rem;
+  }
+
+  .planet-selection__label-active {
+    padding: 0.35rem 0.55rem;
+  }
+
+  .planet-selection__meta {
+    font-size: 7px;
+    letter-spacing: 0.12em;
+  }
+
+  .planet-selection__title {
+    font-size: 0.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planet-selection[data-selected='true'] .planet-selection__frame,
+  .planet-selection[data-selected='true'] .planet-selection__line,
+  .planet-selection[data-selected='true'] .planet-selection__label::before,
+  .planet-selection[data-selected='true'] .planet-selection__label-active {
+    animation-delay: 0ms;
+    animation-duration: 1ms;
+  }
+
+  .module-nav-button,
+  .module-nav-button::before,
+  .module-nav-button__status {
+    transition-duration: 1ms;
+  }
+}
