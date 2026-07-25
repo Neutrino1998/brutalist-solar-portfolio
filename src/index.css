@@ -421,8 +421,8 @@
 }
 
 .archive-terminal__title-row > span {
-  padding-bottom: 0.2rem;
   color: #be2e21;
+  line-height: 0.9;
   text-align: right;
 }
 
@@ -513,9 +513,10 @@
   color: #121212;
 }
 
-.archive-terminal__nav button.is-active span::after {
-  color: #be2e21;
-  content: ' •';
+.archive-terminal__nav button.is-active span {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .archive-terminal__close {
