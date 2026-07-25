@@ -248,7 +248,7 @@ export default function OverlayUI({
         aria-hidden={Boolean(activeModule)}
         className={`absolute right-7 top-7 z-20 flex flex-col items-end gap-1.5 transition-all duration-500 md:right-16 md:top-16 ${activeModule ? 'pointer-events-none translate-x-3 opacity-0' : 'pointer-events-auto translate-x-0 opacity-100'}`}
       >
-        <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.3em] text-[#DED8C4]/45">
+        <p className="mb-1 hidden text-[9px] font-bold uppercase tracking-[0.3em] text-[#DED8C4]/45 md:block">
           Archive ref. 2026-C
         </p>
         {NAV_NODES.map((node) => {
@@ -265,11 +265,11 @@ export default function OverlayUI({
               onMouseEnter={() => setFocusedModule(node.id)}
               onFocus={() => setFocusedModule(node.id)}
               onClick={() => openModule(node.id)}
-              className={`module-nav-button group relative isolate flex h-9 min-w-44 items-center justify-between gap-4 overflow-hidden border px-3 text-left text-[10px] font-black uppercase tracking-[0.16em] ${isFocused ? 'is-focused' : ''}`}
+              className={`module-nav-button group relative isolate flex h-9 min-w-36 items-center justify-between gap-4 overflow-hidden border px-3 text-left text-[10px] font-black uppercase tracking-[0.16em] md:min-w-44 ${isFocused ? 'is-focused' : ''}`}
             >
               <span className="relative z-10 text-xs">{node.index}</span>
               <span className="relative z-10">{node.subtitle}</span>
-              <span className={`module-nav-button__status relative z-10 h-1.5 w-1.5 rounded-full ${isActive ? 'is-active' : ''}`} />
+              <span className={`module-nav-button__status relative z-10 hidden h-1.5 w-1.5 rounded-full md:block ${isActive ? 'is-active' : ''}`} />
             </button>
           );
         })}
@@ -294,7 +294,7 @@ export default function OverlayUI({
             <span className="h-2 w-2 animate-pulse rounded-full bg-[#BE2E21]" />
             System active
           </div>
-          <p className="mt-1 hidden text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/40 md:block">100% stability</p>
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/40">100% stability</p>
         </div>
         <div className="text-right">
           <time
