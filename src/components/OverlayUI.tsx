@@ -226,19 +226,34 @@ export default function OverlayUI({
       <nav
         aria-label="Portfolio modules"
         aria-hidden={Boolean(activeModule)}
-        className={`absolute right-7 top-7 z-20 flex flex-col items-end gap-1.5 transition-all duration-500 md:right-16 md:top-16 ${activeModule ? 'pointer-events-none translate-x-3 opacity-0' : 'pointer-events-auto translate-x-0 opacity-100'}`}
+        className={`absolute right-7 top-7 z-20 flex flex-col items-end gap-1.5 md:right-16 md:top-16 ${activeModule ? 'pointer-events-none' : 'pointer-events-auto'}`}
       >
-        <p className="mb-1 hidden text-[9px] font-bold uppercase tracking-[0.3em] text-[#DED8C4]/45 md:block">
+        <motion.p
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: activeModule ? 0 : 1, x: activeModule ? 12 : 0 }}
+          transition={{
+            duration: activeModule ? 0.18 : 0.28,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+          className="mb-1 hidden text-[9px] font-bold uppercase tracking-[0.3em] text-[#DED8C4]/45 md:block"
+        >
           Archive ref. 2026-C
-        </p>
-        {NAV_NODES.map((node) => {
+        </motion.p>
+        {NAV_NODES.map((node, nodeIndex) => {
           const isFocused = focusedModule === node.id;
           const isActive = activeModule === node.id;
 
           return (
-            <button
+            <motion.button
               key={node.id}
               type="button"
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: activeModule ? 0 : 1, x: activeModule ? 12 : 0 }}
+              transition={{
+                duration: activeModule ? 0.18 : 0.28,
+                delay: nodeIndex * (activeModule ? 0.035 : 0.045),
+                ease: [0.22, 1, 0.36, 1],
+              }}
               tabIndex={activeModule ? -1 : 0}
               aria-label={`打开${node.title}模块`}
               aria-pressed={isActive}
@@ -250,7 +265,7 @@ export default function OverlayUI({
               <span className="relative z-10 text-xs">{node.index}</span>
               <span className="relative z-10">{node.subtitle}</span>
               <span className={`module-nav-button__status relative z-10 hidden h-1.5 w-1.5 rounded-full md:block ${isActive ? 'is-active' : ''}`} />
-            </button>
+            </motion.button>
           );
         })}
       </nav>
