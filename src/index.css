@@ -711,14 +711,8 @@
 }
 
 .diagnostic-row__signal span.is-half {
-  border-color: rgb(190 46 33 / 66%);
-  background: repeating-linear-gradient(
-    -45deg,
-    #be2e21 0,
-    #be2e21 2px,
-    transparent 2px,
-    transparent 6px
-  );
+  border-color: rgb(190 46 33 / 56%);
+  background: rgb(190 46 33 / 38%);
 }
 
 .diagnostic-row__value {
