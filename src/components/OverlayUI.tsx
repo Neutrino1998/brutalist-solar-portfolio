@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { ModuleId } from '../types';
 import { MODULE_CONTENT, NAV_NODES } from '../data';
+import { decodeSignalFrame } from '../utils';
 
 interface OverlayUIProps {
   activeModule: ModuleId | null;
@@ -47,29 +48,8 @@ const TERMINAL_LOGS = [
   '[00.672] HANDSHAKE / DATA NODE',
 ] as const;
 
-const DECODE_GLYPHS = ['#', '0', '1', 'X', '/', '\\', '[', ']', '+', '-'] as const;
-
 function formatLocalTime(date: Date) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
-function decodeFrame(target: string, progress: number, tick: number) {
-  if (progress >= 1) return target;
-  if (progress <= 0) return '#';
-
-  const visibleLength = Math.min(
-    target.length,
-    Math.max(1, Math.ceil(progress * target.length * 2.2)),
-  );
-  const lockedLength = Math.min(
-    visibleLength,
-    Math.floor((progress ** 1.65) * target.length),
-  );
-
-  return Array.from({ length: visibleLength }, (_, index) => {
-    if (index < lockedLength) return target[index];
-    return DECODE_GLYPHS[(tick + index * 3) % DECODE_GLYPHS.length];
-  }).join('');
 }
 
 function ArchiveLocator({ index, label }: { index: string; label: string }) {
@@ -125,8 +105,8 @@ function ArchiveLocator({ index, label }: { index: string; label: string }) {
         await animate(95, (progress, tick) => {
           const reverseProgress = 1 - progress;
           setFrame({
-            index: decodeFrame(outgoing.index, reverseProgress, tick + 5),
-            label: decodeFrame(outgoing.label, reverseProgress, tick + 11),
+            index: decodeSignalFrame(outgoing.index, reverseProgress, tick + 5),
+            label: decodeSignalFrame(outgoing.label, reverseProgress, tick + 11),
           });
         });
       }
@@ -134,8 +114,8 @@ function ArchiveLocator({ index, label }: { index: string; label: string }) {
       if (cancelled) return;
       await animate(215, (progress, tick) => {
         setFrame({
-          index: decodeFrame(nextTarget.index, progress, tick),
-          label: decodeFrame(nextTarget.label, progress, tick + 4),
+          index: decodeSignalFrame(nextTarget.index, progress, tick),
+          label: decodeSignalFrame(nextTarget.label, progress, tick + 4),
         });
       });
     };

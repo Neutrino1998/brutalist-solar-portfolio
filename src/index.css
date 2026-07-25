@@ -1,39 +1,62 @@
 @import "tailwindcss";
 
-@keyframes planet-frame-in {
+@keyframes planet-signal-lock {
   0% {
     opacity: 0;
-    transform: rotate(0deg) scale(0.62);
+    border-color: rgb(190 46 33 / 0%);
+    transform: rotate(41deg) scale(1.32);
+  }
+  16% {
+    opacity: 0.9;
+    border-color: #be2e21;
+    transform: rotate(47deg) scale(1.22);
+  }
+  28% {
+    opacity: 0.32;
+    border-color: #be2e21;
+    transform: rotate(44deg) scale(1.15);
+  }
+  46% {
+    opacity: 1;
+    border-color: #be2e21;
+    transform: rotate(46deg) scale(1.08);
   }
   68% {
     opacity: 1;
-    transform: rotate(49deg) scale(1.035);
+    border-color: #ded8c4;
+    transform: rotate(45deg) scale(1.03);
   }
   100% {
     opacity: 1;
+    border-color: #ded8c4;
     transform: rotate(45deg) scale(1);
   }
 }
 
-@keyframes connector-line-in {
+@keyframes signal-line-in {
   from { background-size: 0% 100%; }
   to { background-size: 100% 100%; }
 }
 
-@keyframes label-fill-in {
+@keyframes signal-panel-in {
   from { background-size: 0% 100%; }
   to { background-size: 100% 100%; }
 }
 
-@keyframes label-copy-in {
+@keyframes signal-copy-in {
   from { clip-path: inset(0 100% 0 0); }
   to { clip-path: inset(0 0 0 0); }
 }
 
 .planet-selection__frame {
   opacity: 0;
-  transform: rotate(0deg) scale(0.62);
+  border-color: rgb(190 46 33 / 0%);
+  transform: rotate(45deg) scale(0.88);
   transform-origin: center;
+  transition:
+    opacity 120ms ease,
+    border-color 100ms ease,
+    transform 160ms cubic-bezier(0.4, 0, 1, 1);
 }
 
 .planet-selection__connector {
@@ -42,11 +65,13 @@
 }
 
 .planet-selection__line {
+  position: relative;
   width: calc(2rem + 5px);
   background-image: linear-gradient(#ded8c4, #ded8c4);
   background-repeat: no-repeat;
   background-position: left center;
   background-size: 0% 100%;
+  transition: background-size 120ms cubic-bezier(0.4, 0, 1, 1);
 }
 
 .planet-selection__label {
@@ -65,6 +90,7 @@
   background-size: 0% 100%;
   background-origin: border-box;
   background-clip: border-box;
+  transition: background-size 120ms cubic-bezier(0.4, 0, 1, 1);
 }
 
 .planet-selection__label-base {
@@ -76,22 +102,23 @@
   z-index: 2;
   padding: 0.5rem 1rem;
   clip-path: inset(0 100% 0 0);
+  transition: clip-path 100ms cubic-bezier(0.4, 0, 1, 1);
 }
 
 .planet-selection[data-selected='true'] .planet-selection__frame {
-  animation: planet-frame-in 260ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  animation: planet-signal-lock 300ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
 }
 
 .planet-selection[data-selected='true'] .planet-selection__line {
-  animation: connector-line-in 170ms cubic-bezier(0.22, 1, 0.36, 1) 180ms both;
+  animation: signal-line-in 150ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
 }
 
 .planet-selection[data-selected='true'] .planet-selection__label {
-  animation: label-fill-in 220ms cubic-bezier(0.65, 0, 0.35, 1) 320ms both;
+  animation: signal-panel-in 210ms cubic-bezier(0.65, 0, 0.35, 1) 285ms both;
 }
 
 .planet-selection[data-selected='true'] .planet-selection__label-active {
-  animation: label-copy-in 220ms cubic-bezier(0.65, 0, 0.35, 1) 320ms both;
+  animation: signal-copy-in 170ms steps(6, end) 325ms both;
 }
 
 .module-nav-button {
@@ -1000,6 +1027,13 @@
   .planet-selection[data-selected='true'] .planet-selection__label-active {
     animation-delay: 0ms;
     animation-duration: 1ms;
+  }
+
+  .planet-selection__frame,
+  .planet-selection__line,
+  .planet-selection__label,
+  .planet-selection__label-active {
+    transition-duration: 1ms;
   }
 
   .module-nav-button,

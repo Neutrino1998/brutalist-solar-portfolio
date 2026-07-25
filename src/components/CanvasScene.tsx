@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
@@ -8,6 +8,7 @@ import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { ModuleId } from '../types';
 import { PLANETS } from '../data';
+import { decodeSignalFrame } from '../utils';
 
 interface CanvasSceneProps {
   activeModule: ModuleId | null;
@@ -373,6 +374,64 @@ function calculatePixelAlignedPosition(
   ];
 }
 
+function SignalLabelCopy({
+  selected,
+  meta,
+  title,
+}: {
+  selected: boolean;
+  meta: string;
+  title: string;
+}) {
+  const [decoded, setDecoded] = useState({ meta, title });
+
+  useEffect(() => {
+    const target = { meta, title };
+
+    if (!selected || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDecoded(target);
+      return undefined;
+    }
+
+    setDecoded({ meta: '#', title: '#' });
+    let animationFrame = 0;
+    const decodeTimer = window.setTimeout(() => {
+      const startedAt = window.performance.now();
+
+      const update = (now: number) => {
+        const progress = Math.min(1, (now - startedAt) / 340);
+        const tick = Math.floor(progress * 9);
+        setDecoded({
+          meta: decodeSignalFrame(meta, progress, tick),
+          title: decodeSignalFrame(title, progress, tick + 4),
+        });
+
+        if (progress < 1) {
+          animationFrame = window.requestAnimationFrame(update);
+        }
+      };
+
+      animationFrame = window.requestAnimationFrame(update);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(decodeTimer);
+      window.cancelAnimationFrame(animationFrame);
+    };
+  }, [meta, selected, title]);
+
+  return (
+    <>
+      <span className="planet-selection__meta block text-[10px] font-black uppercase tracking-[0.2em] text-[#121212]">
+        {decoded.meta}
+      </span>
+      <span className="planet-selection__title mt-1 block text-xl font-black italic uppercase leading-none text-[#121212]">
+        {decoded.title}
+      </span>
+    </>
+  );
+}
+
 function SelectionFrame({
   visualRadius,
   index,
@@ -443,12 +502,11 @@ function SelectionFrame({
                 </span>
               </span>
               <span className="planet-selection__label-active absolute inset-0 block" aria-hidden="true">
-                <span className="planet-selection__meta block text-[10px] font-black uppercase tracking-[0.2em] text-[#121212]">
-                  {index} / {systemLabel}
-                </span>
-                <span className="planet-selection__title mt-1 block text-xl font-black italic uppercase leading-none text-[#121212]">
-                  {subtitle}
-                </span>
+                <SignalLabelCopy
+                  selected={selected}
+                  meta={`${index} / ${systemLabel}`}
+                  title={subtitle}
+                />
               </span>
             </span>
           </span>
