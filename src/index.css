@@ -153,6 +153,26 @@
   }
 }
 
+@keyframes archive-rail-reveal {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes archive-footer-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes archive-scan {
   0% { transform: translateY(-12vh); opacity: 0; }
   12% { opacity: 0.34; }
@@ -253,6 +273,8 @@
   bottom: 0;
   width: 2px;
   height: min(20vh, 180px);
+  transform-origin: bottom center;
+  animation: archive-rail-reveal 420ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
 }
 
 .archive-terminal__header {
@@ -457,6 +479,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   white-space: nowrap;
+  animation: archive-footer-reveal 500ms cubic-bezier(0.4, 0, 0.2, 1) 120ms both;
 }
 
 .archive-terminal__pulse {
@@ -473,6 +496,7 @@
   display: flex;
   align-items: stretch;
   gap: 0.8rem;
+  animation: archive-footer-reveal 500ms cubic-bezier(0.4, 0, 0.2, 1) 120ms both;
 }
 
 .archive-terminal__nav {
@@ -806,6 +830,7 @@
 
   .archive-terminal__frame {
     position: fixed;
+    z-index: 5;
     inset: 0.75rem;
   }
 
@@ -852,7 +877,7 @@
     left: auto;
     overflow: visible;
     margin-top: 1.5rem;
-    padding: 0 1.5rem 2rem;
+    padding: 0 1.5rem 7rem;
   }
 
   .archive-terminal__eyebrow { font-size: 7px; }
@@ -868,10 +893,10 @@
   .archive-terminal__body { font-size: 0.8rem; }
 
   .archive-terminal__footer {
-    position: sticky;
-    right: auto;
+    position: fixed;
+    right: 0;
     bottom: 0;
-    left: auto;
+    left: 0;
     align-items: center;
     margin-top: 0;
     padding: 0.75rem 1.5rem 1.5rem;
@@ -985,10 +1010,13 @@
 
   .archive-terminal__scanbar,
   .archive-terminal__frame::before,
+  .archive-terminal__frame::after,
   .archive-terminal__boot > span,
   .archive-terminal__eyebrow,
   .archive-terminal__title-row,
   .archive-terminal__body,
+  .archive-terminal__footer-status,
+  .archive-terminal__controls,
   .terminal-cursor {
     animation-delay: 0ms;
     animation-duration: 1ms;
