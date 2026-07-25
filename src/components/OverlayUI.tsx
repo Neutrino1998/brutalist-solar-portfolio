@@ -265,7 +265,7 @@ export default function OverlayUI({
               onMouseEnter={() => setFocusedModule(node.id)}
               onFocus={() => setFocusedModule(node.id)}
               onClick={() => openModule(node.id)}
-              className={`module-nav-button group relative isolate flex h-9 min-w-36 items-center justify-between gap-4 overflow-hidden border px-3 text-left text-[10px] font-black uppercase tracking-[0.16em] md:min-w-44 ${isFocused ? 'is-focused' : ''}`}
+              className={`module-nav-button group relative isolate flex h-9 min-w-[min(9rem,35vw)] items-center justify-between gap-4 overflow-hidden border px-3 text-left text-[10px] font-black uppercase tracking-[0.16em] md:min-w-44 ${isFocused ? 'is-focused' : ''}`}
             >
               <span className="relative z-10 text-xs">{node.index}</span>
               <span className="relative z-10">{node.subtitle}</span>
