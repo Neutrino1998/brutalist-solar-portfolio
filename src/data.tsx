@@ -121,18 +121,28 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
           { name: 'REACT / VITE', level: 95, code: 'SYS.02' },
           { name: 'TYPESCRIPT', level: 85, code: 'ENG.03' },
           { name: 'UI / UX DESIGN', level: 80, code: 'VIS.04' },
-        ].map((skill) => (
-          <div key={skill.name} className="diagnostic-row">
-            <span className="diagnostic-row__code">{skill.code}</span>
-            <strong>{skill.name}</strong>
-            <div className="diagnostic-row__signal" aria-label={`${skill.level}%`}>
-              {Array.from({ length: 10 }, (_, index) => (
-                <span key={index} className={index < Math.round(skill.level / 10) ? 'is-on' : ''} />
-              ))}
+        ].map((skill) => {
+          const signalLevel = skill.level / 10;
+
+          return (
+            <div key={skill.name} className="diagnostic-row">
+              <span className="diagnostic-row__code">{skill.code}</span>
+              <strong>{skill.name}</strong>
+              <div className="diagnostic-row__signal" aria-label={`${skill.level}%`}>
+                {Array.from({ length: 10 }, (_, index) => {
+                  const cellState = index < Math.floor(signalLevel)
+                    ? 'is-on'
+                    : index < signalLevel
+                      ? 'is-half'
+                      : '';
+
+                  return <span key={index} className={cellState} />;
+                })}
+              </div>
+              <span className="diagnostic-row__value">{signalLevel.toFixed(1)}</span>
             </div>
-            <span className="diagnostic-row__value">{(skill.level / 10).toFixed(1)}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     ),
   },

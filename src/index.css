@@ -710,9 +710,21 @@
   background: #be2e21;
 }
 
+.diagnostic-row__signal span.is-half {
+  border-color: rgb(190 46 33 / 66%);
+  background: repeating-linear-gradient(
+    -45deg,
+    #be2e21 0,
+    #be2e21 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
 .diagnostic-row__value {
   color: rgb(222 216 196 / 52%);
   text-align: right;
+  white-space: nowrap;
 }
 
 .transmission-record__prompt {
@@ -910,11 +922,17 @@
   }
 
   .diagnostic-row {
-    grid-template-columns: 2.8rem 1fr 1.5rem;
+    grid-template-areas:
+      "code name value"
+      ". signal signal";
+    grid-template-columns: 2.8rem minmax(0, 1fr) 2rem;
   }
+  .diagnostic-row__code { grid-area: code; }
+  .diagnostic-row strong { grid-area: name; }
   .diagnostic-row__signal {
-    grid-column: 2 / 4;
+    grid-area: signal;
   }
+  .diagnostic-row__value { grid-area: value; }
 
   .transmission-channels a {
     grid-template-columns: 1fr auto;
