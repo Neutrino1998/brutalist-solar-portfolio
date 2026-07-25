@@ -163,6 +163,7 @@ export default function OverlayUI({
   const activeMeta = activeModule ? ARCHIVE_META[activeModule] : null;
   const terminalRef = useRef<HTMLElement>(null);
   const previousActiveModuleRef = useRef<ModuleId | null>(null);
+  const isArchiveOpen = activeModule !== null;
   const isArchiveSwitch = activeModule !== null
     && previousActiveModuleRef.current !== null
     && previousActiveModuleRef.current !== activeModule;
@@ -177,9 +178,15 @@ export default function OverlayUI({
   }, [activeModule]);
 
   useEffect(() => {
-    if (!activeModule) return undefined;
+    if (!isArchiveOpen) return undefined;
 
     const focusTimer = window.setTimeout(() => terminalRef.current?.focus(), 40);
+    return () => window.clearTimeout(focusTimer);
+  }, [isArchiveOpen]);
+
+  useEffect(() => {
+    if (!activeModule) return undefined;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setActiveModule(null);
@@ -198,7 +205,6 @@ export default function OverlayUI({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.clearTimeout(focusTimer);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [activeModule, setActiveModule, setFocusedModule]);
