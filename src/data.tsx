@@ -75,7 +75,7 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
           <div><dt>STATUS</dt><dd>ACTIVE / AVAILABLE</dd></div>
           <div><dt>FOCUS</dt><dd>FRONTEND / WEBGL / VISUAL SYSTEMS</dd></div>
         </dl>
-        <blockquote>“秩序建立在对重力的反叛之上。”</blockquote>
+        <blockquote>“宇宙既不敌视我们，也不友善。它只是漠不关心。”——卡尔·萨根</blockquote>
       </div>
     ),
   },
@@ -156,20 +156,20 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
           &gt; COMMUNICATION PROTOCOL READY
         </p>
         <div className="transmission-channels">
-          <a href="mailto:hello@system.com">
+          <a href="mailto:1998neutrino@gmail.com">
             <span>CH.01 / EMAIL</span>
-            <strong>HELLO@SYSTEM.COM</strong>
+            <strong>1998neutrino@gmail.com</strong>
             <small>OPEN CHANNEL ↗</small>
           </a>
-          <a href="https://github.com/neutrino" target="_blank" rel="noreferrer">
+          <a href="https://github.com/Neutrino1998" target="_blank" rel="noreferrer">
             <span>CH.02 / GITHUB</span>
-            <strong>@NEUTRINO</strong>
+            <strong>@Neutrino1998</strong>
             <small>EXTERNAL LINK ↗</small>
           </a>
-          <a href="https://x.com/system_core" target="_blank" rel="noreferrer">
+          <a href="mailto:1998neutrino@gmail.com">
             <span>CH.03 / SOCIAL</span>
-            <strong>@SYSTEM_CORE</strong>
-            <small>EXTERNAL LINK ↗</small>
+            <strong>1998neutrino@gmail.com</strong>
+            <small>OPEN CHANNEL ↗</small>
           </a>
         </div>
         <p className="transmission-record__warning">
