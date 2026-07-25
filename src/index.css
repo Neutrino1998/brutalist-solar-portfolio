@@ -779,6 +779,10 @@
 }
 
 @media (max-width: 767px) {
+  .planet-selection__connector {
+    display: none;
+  }
+
   .archive-terminal {
     --archive-gutter: 1.5rem;
     overflow-y: auto;
@@ -924,35 +928,6 @@
   .transmission-channels small {
     grid-column: 2;
     grid-row: 1 / 3;
-  }
-}
-
-@media (max-width: 639px) {
-  .planet-selection__line {
-    width: calc(1rem + 5px);
-  }
-
-  .planet-selection__connector {
-    top: -21px;
-  }
-
-  .planet-selection__label {
-    width: 132px;
-    height: 42px;
-    padding: 0.35rem 0.55rem;
-  }
-
-  .planet-selection__label-active {
-    padding: 0.35rem 0.55rem;
-  }
-
-  .planet-selection__meta {
-    font-size: 7px;
-    letter-spacing: 0.12em;
-  }
-
-  .planet-selection__title {
-    font-size: 0.8rem;
   }
 }
 
