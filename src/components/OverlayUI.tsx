@@ -49,6 +49,10 @@ const TERMINAL_LOGS = [
 
 const DECODE_GLYPHS = ['#', '0', '1', 'X', '/', '\\', '[', ']', '+', '-'] as const;
 
+function formatLocalTime(date: Date) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
 function decodeFrame(target: string, progress: number, tick: number) {
   if (progress >= 1) return target;
   if (progress <= 0) return '#';
@@ -163,6 +167,7 @@ export default function OverlayUI({
   const activeMeta = activeModule ? ARCHIVE_META[activeModule] : null;
   const terminalRef = useRef<HTMLElement>(null);
   const previousActiveModuleRef = useRef<ModuleId | null>(null);
+  const [localTime, setLocalTime] = useState(() => formatLocalTime(new Date()));
   const isArchiveOpen = activeModule !== null;
   const isArchiveSwitch = activeModule !== null
     && previousActiveModuleRef.current !== null
@@ -176,6 +181,14 @@ export default function OverlayUI({
   useEffect(() => {
     previousActiveModuleRef.current = activeModule;
   }, [activeModule]);
+
+  useEffect(() => {
+    const clockInterval = window.setInterval(() => {
+      setLocalTime(formatLocalTime(new Date()));
+    }, 1000);
+
+    return () => window.clearInterval(clockInterval);
+  }, []);
 
   useEffect(() => {
     if (!isArchiveOpen) return undefined;
@@ -284,7 +297,12 @@ export default function OverlayUI({
           <p className="mt-1 hidden text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/40 md:block">100% stability</p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-black italic leading-none text-[#DED8C4] md:text-4xl">19.04</p>
+          <time
+            className="text-2xl font-black italic leading-none text-[#DED8C4] md:text-4xl"
+            dateTime={localTime}
+          >
+            {localTime}
+          </time>
           <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.24em] text-[#DED8C4]/40">Orbital timestamp</p>
         </div>
       </footer>
