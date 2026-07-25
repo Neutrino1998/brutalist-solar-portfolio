@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useRef } from 'react';
 import { ModuleId } from '../types';
 import { MODULE_CONTENT, NAV_NODES } from '../data';
 
@@ -9,6 +10,29 @@ interface OverlayUIProps {
   setFocusedModule: (id: ModuleId) => void;
 }
 
+const ARCHIVE_META: Record<ModuleId, { type: string; channel: string; status: string }> = {
+  profile: {
+    type: 'PERSONNEL RECORD',
+    channel: 'IDENTITY / BIOGRAPHIC',
+    status: 'VERIFIED / ACTIVE',
+  },
+  projects: {
+    type: 'MISSION ARCHIVE',
+    channel: 'SELECTED OPERATIONS',
+    status: '02 RECORDS / READY',
+  },
+  skills: {
+    type: 'CAPABILITY DIAGNOSTICS',
+    channel: 'SYSTEM PROFICIENCY',
+    status: 'NOMINAL / ONLINE',
+  },
+  contact: {
+    type: 'TRANSMISSION CHANNEL',
+    channel: 'EXTERNAL COMMS',
+    status: 'LISTENING / OPEN',
+  },
+};
+
 export default function OverlayUI({
   activeModule,
   focusedModule,
@@ -16,18 +40,52 @@ export default function OverlayUI({
   setFocusedModule,
 }: OverlayUIProps) {
   const activeData = activeModule ? MODULE_CONTENT[activeModule] : null;
-  const activeIndex = NAV_NODES.find((node) => node.id === activeModule)?.index;
+  const activeNode = NAV_NODES.find((node) => node.id === activeModule);
+  const activeMeta = activeModule ? ARCHIVE_META[activeModule] : null;
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const openModule = (id: ModuleId) => {
     setFocusedModule(id);
     setActiveModule(id);
   };
 
-  return (
-    <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-      <div className="absolute inset-4 md:inset-8 border border-[#4A4842] pointer-events-none" />
+  useEffect(() => {
+    if (!activeModule) return undefined;
 
-      <header className="absolute left-8 top-8 z-10 md:left-16 md:top-16">
+    const focusTimer = window.setTimeout(() => closeButtonRef.current?.focus(), 40);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActiveModule(null);
+        return;
+      }
+
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      const activeIndex = NAV_NODES.findIndex((node) => node.id === activeModule);
+      const direction = event.key === 'ArrowRight' ? 1 : -1;
+      const nextNode = NAV_NODES[
+        (activeIndex + direction + NAV_NODES.length) % NAV_NODES.length
+      ];
+      setFocusedModule(nextNode.id);
+      setActiveModule(nextNode.id);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeModule, setActiveModule, setFocusedModule]);
+
+  return (
+    <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
+      <div
+        className={`absolute inset-4 border border-[#4A4842] transition-opacity duration-500 md:inset-8 ${activeModule ? 'opacity-20' : 'opacity-100'}`}
+      />
+
+      <header
+        className={`absolute left-8 top-8 z-10 transition-all duration-500 md:left-16 md:top-16 ${activeModule ? '-translate-y-3 opacity-0' : 'translate-y-0 opacity-100'}`}
+        aria-hidden={Boolean(activeModule)}
+      >
         <h1 className="text-5xl font-black uppercase tracking-[-0.07em] leading-[0.78] text-[#DED8C4] md:text-7xl lg:text-[104px]">
           主系统<br />
           <span className="text-[#BE2E21]">CORE</span>
@@ -41,7 +99,8 @@ export default function OverlayUI({
 
       <nav
         aria-label="Portfolio modules"
-        className="pointer-events-auto absolute right-7 top-7 z-20 grid grid-cols-2 gap-1.5 md:right-16 md:top-16 md:flex md:flex-col md:items-end"
+        aria-hidden={Boolean(activeModule)}
+        className={`absolute right-7 top-7 z-20 grid grid-cols-2 gap-1.5 transition-all duration-500 md:right-16 md:top-16 md:flex md:flex-col md:items-end ${activeModule ? 'pointer-events-none translate-x-3 opacity-0' : 'pointer-events-auto translate-x-0 opacity-100'}`}
       >
         <p className="col-span-2 mb-1 hidden text-[9px] font-bold uppercase tracking-[0.3em] text-[#DED8C4]/45 md:block">
           Archive ref. 2026-C
@@ -54,6 +113,7 @@ export default function OverlayUI({
             <button
               key={node.id}
               type="button"
+              tabIndex={activeModule ? -1 : 0}
               aria-label={`打开${node.title}模块`}
               aria-pressed={isActive}
               onMouseEnter={() => setFocusedModule(node.id)}
@@ -69,7 +129,9 @@ export default function OverlayUI({
         })}
       </nav>
 
-      <div className="absolute bottom-24 left-1/2 hidden -translate-x-1/2 items-center gap-4 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/50 md:flex">
+      <div
+        className={`absolute bottom-24 left-1/2 hidden -translate-x-1/2 items-center gap-4 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/50 transition-opacity duration-500 md:flex ${activeModule ? 'opacity-0' : 'opacity-100'}`}
+      >
         <span>Drag — orbit</span>
         <span className="h-px w-8 bg-[#DED8C4]/25" />
         <span>Wheel — scale</span>
@@ -77,7 +139,10 @@ export default function OverlayUI({
         <span>Hover — focus</span>
       </div>
 
-      <footer className="absolute bottom-8 left-8 right-8 z-10 flex items-end justify-between md:bottom-16 md:left-16 md:right-16">
+      <footer
+        className={`absolute bottom-8 left-8 right-8 z-10 flex items-end justify-between transition-all duration-500 md:bottom-16 md:left-16 md:right-16 ${activeModule ? 'translate-y-3 opacity-0' : 'translate-y-0 opacity-100'}`}
+        aria-hidden={Boolean(activeModule)}
+      >
         <div>
           <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-[#BE2E21] md:text-[10px]">
             <span className="h-2 w-2 animate-pulse rounded-full bg-[#BE2E21]" />
@@ -91,42 +156,93 @@ export default function OverlayUI({
         </div>
       </footer>
 
-      <AnimatePresence>
-        {activeModule && activeData && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 26, stiffness: 150 }}
-            className="pointer-events-auto absolute right-0 top-0 z-40 h-full w-full overflow-y-auto border-l border-[#4A4842] bg-[#151513] p-8 text-[#DED8C4] shadow-2xl md:w-[460px] md:p-12 lg:w-[520px]"
+      <AnimatePresence mode="wait">
+        {activeModule && activeData && activeNode && activeMeta && (
+          <motion.section
+            key={activeModule}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            className="archive-terminal pointer-events-auto absolute inset-0 z-40 text-[#DED8C4]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="archive-terminal-title"
           >
-            <div className="absolute left-0 top-0 h-full w-1 bg-[#BE2E21]" />
-            <button
-              type="button"
-              onClick={() => setActiveModule(null)}
-              className="absolute right-8 top-8 grid h-10 w-10 place-items-center bg-[#DED8C4] text-3xl font-black leading-none text-[#121212] transition-colors hover:bg-[#BE2E21] hover:text-[#DED8C4]"
-              aria-label="关闭模块"
-            >
-              ×
-            </button>
-            <div className="mt-16">
-              <div className="mb-10 flex flex-col">
-                <div className="mb-5 flex items-center gap-4">
-                  <span className="grid h-10 w-10 rotate-45 place-items-center bg-[#DED8C4] text-[#121212]">
-                    <span className="-rotate-45 text-xs font-black">{activeIndex}</span>
-                  </span>
-                  <span className="text-xs font-black uppercase tracking-[0.24em] text-[#BE2E21]">
-                    {activeData.subtitle} / DATA NODE
-                  </span>
-                </div>
-                <h2 className="mt-2 text-6xl font-black leading-none text-[#DED8C4] md:text-7xl">
-                  {activeData.title}
-                </h2>
+            <div className="archive-terminal__shade" />
+            <div className="archive-terminal__grid" aria-hidden="true" />
+            <div className="archive-terminal__scanbar" aria-hidden="true" />
+            <div className="archive-terminal__frame" aria-hidden="true" />
+
+            <header className="archive-terminal__header">
+              <div className="archive-terminal__boot" aria-label="终端连接状态">
+                <span>&gt; ACQUIRING OBJECT {activeNode.index}</span>
+                <span>&gt; ORBIT LOCKED / SIGNAL 100%</span>
+                <span>&gt; ARCHIVE NODE / {activeData.subtitle} / OPEN<span className="terminal-cursor" /></span>
               </div>
-              <div className="mb-10 h-px w-full bg-[#BE2E21]" />
-              <div className="text-lg font-medium leading-relaxed">{activeData.body}</div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={() => setActiveModule(null)}
+                className="archive-terminal__close"
+                aria-label="关闭档案终端"
+              >
+                <span aria-hidden="true">×</span>
+                <small>ESC / CLOSE</small>
+              </button>
+            </header>
+
+            <div className="archive-terminal__locator" aria-hidden="true">
+              <span className="archive-terminal__index">{activeNode.index}</span>
+              <span className="archive-terminal__locator-line" />
+              <span className="archive-terminal__locator-copy">
+                OBJECT LOCKED<br />
+                {activeNode.systemLabel}<br />
+                COORD / LIVE
+              </span>
             </div>
-          </motion.div>
+
+            <main className="archive-terminal__record">
+              <div className="archive-terminal__eyebrow">
+                <span>SYS.ARCHIVE / NODE {activeNode.index}</span>
+                <span>{activeMeta.status}</span>
+              </div>
+              <div className="archive-terminal__title-row">
+                <div>
+                  <p>{activeMeta.type}</p>
+                  <h2 id="archive-terminal-title">{activeData.title}</h2>
+                </div>
+                <span>{activeData.subtitle}</span>
+              </div>
+              <p className="archive-terminal__channel">
+                CHANNEL / {activeMeta.channel}
+              </p>
+              <div className="archive-terminal__body">{activeData.body}</div>
+            </main>
+
+            <footer className="archive-terminal__footer">
+              <div className="archive-terminal__footer-status">
+                <span className="archive-terminal__pulse" />
+                SESSION ACTIVE
+                <span className="hidden sm:inline">/ ← → SWITCH NODE</span>
+              </div>
+              <nav aria-label="切换档案节点" className="archive-terminal__nav">
+                {NAV_NODES.map((node) => (
+                  <button
+                    key={node.id}
+                    type="button"
+                    onClick={() => openModule(node.id)}
+                    aria-label={`切换到${node.title}档案`}
+                    aria-pressed={activeModule === node.id}
+                    className={activeModule === node.id ? 'is-active' : ''}
+                  >
+                    <span>{node.index}</span>
+                    <small>{node.subtitle}</small>
+                  </button>
+                ))}
+              </nav>
+            </footer>
+          </motion.section>
         )}
       </AnimatePresence>
     </div>

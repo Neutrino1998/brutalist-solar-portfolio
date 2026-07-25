@@ -64,23 +64,18 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
     title: '简介',
     subtitle: 'PROFILE',
     body: (
-      <div className="space-y-6 text-lg">
-        <p className="font-bold text-2xl uppercase tracking-widest text-[#BE2E21]">
-          <span className="text-[#DED8C4]">ID:</span> 0X-NEUTRINO
-        </p>
-        <div className="w-full h-1 bg-[#BE2E21]"></div>
-        <p>
-          独立开发者，视觉设计师与架构师。<br/>
-          专注于探索技术与极致视觉表现的结合，打破传统界面的网格束缚。
-        </p>
-        <p>
-          "秩序建立在对重力的反叛之上。"
-        </p>
-        <ul className="list-square pl-5 space-y-2 mt-8">
-          <li>坐标: 地球 / 亚洲</li>
-          <li>状态: 活跃运行中</li>
-          <li>专精: 前端工程 / 3D交互 / 视觉设计</li>
-        </ul>
+      <div className="personnel-record">
+        <div className="personnel-record__identity">
+          <span>ID / 0X-NEUTRINO</span>
+          <strong>独立开发者、视觉设计师与架构师。</strong>
+          <p>专注于探索技术与极致视觉表现的结合，在结构、空间与交互之间建立新的秩序。</p>
+        </div>
+        <dl className="archive-ledger">
+          <div><dt>LOCATION</dt><dd>EARTH / ASIA</dd></div>
+          <div><dt>STATUS</dt><dd>ACTIVE / AVAILABLE</dd></div>
+          <div><dt>FOCUS</dt><dd>FRONTEND / WEBGL / VISUAL SYSTEMS</dd></div>
+        </dl>
+        <blockquote>“秩序建立在对重力的反叛之上。”</blockquote>
       </div>
     ),
   },
@@ -89,17 +84,29 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
     title: '作品',
     subtitle: 'WORKS',
     body: (
-      <div className="space-y-8">
-        <div className="border-2 border-[#3A3935] p-4 relative group hover:bg-[#DED8C4] hover:border-[#DED8C4] transition-colors">
-          <h3 className="text-3xl font-black mb-2 uppercase group-hover:text-[#121212]">Project.Alpha</h3>
-          <p className="text-sm uppercase tracking-widest mb-4 group-hover:text-[#121212]">WebGL Data Visualization</p>
-          <p className="group-hover:text-[#121212]">高维度数据的三维拓扑结构可视化，构建于 Three.js 之上。</p>
-        </div>
-        <div className="border-2 border-[#3A3935] p-4 relative group hover:bg-[#DED8C4] hover:border-[#DED8C4] transition-colors">
-          <h3 className="text-3xl font-black mb-2 uppercase group-hover:text-[#121212]">System.Beta</h3>
-          <p className="text-sm uppercase tracking-widest mb-4 group-hover:text-[#121212]">Brutalist E-commerce</p>
-          <p className="group-hover:text-[#121212]">反常规排版的电商体验实验，纯粹的黑白红美学体系。</p>
-        </div>
+      <div className="mission-archive">
+        <article className="mission-entry">
+          <div className="mission-entry__rail">
+            <span>OP.001</span>
+            <span>2025 / DEPLOYED</span>
+          </div>
+          <div className="mission-entry__content">
+            <p>WEBGL DATA VISUALIZATION</p>
+            <h3>PROJECT.ALPHA</h3>
+            <span>高维数据的三维拓扑结构可视化，构建于 Three.js 之上。</span>
+          </div>
+        </article>
+        <article className="mission-entry">
+          <div className="mission-entry__rail">
+            <span>OP.002</span>
+            <span>2026 / EXPERIMENT</span>
+          </div>
+          <div className="mission-entry__content">
+            <p>BRUTALIST COMMERCE SYSTEM</p>
+            <h3>SYSTEM.BETA</h3>
+            <span>以反常规排版重构商业体验，使用黑、纸白与信号红建立高压视觉秩序。</span>
+          </div>
+        </article>
       </div>
     ),
   },
@@ -108,24 +115,22 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
     title: '技能',
     subtitle: 'SKILLS',
     body: (
-      <div className="space-y-6">
+      <div className="diagnostics-list">
         {[
-          { name: 'THREE.JS / WEBGL', level: 90 },
-          { name: 'REACT / VITE', level: 95 },
-          { name: 'TYPESCRIPT', level: 85 },
-          { name: 'UI / UX DESIGN', level: 80 },
+          { name: 'THREE.JS / WEBGL', level: 90, code: 'GFX.01' },
+          { name: 'REACT / VITE', level: 95, code: 'SYS.02' },
+          { name: 'TYPESCRIPT', level: 85, code: 'ENG.03' },
+          { name: 'UI / UX DESIGN', level: 80, code: 'VIS.04' },
         ].map((skill) => (
-          <div key={skill.name} className="space-y-2">
-            <div className="flex justify-between font-bold uppercase tracking-wider text-xl">
-              <span>{skill.name}</span>
-              <span className="text-[#BE2E21]">{skill.level}%</span>
+          <div key={skill.name} className="diagnostic-row">
+            <span className="diagnostic-row__code">{skill.code}</span>
+            <strong>{skill.name}</strong>
+            <div className="diagnostic-row__signal" aria-label={`${skill.level}%`}>
+              {Array.from({ length: 10 }, (_, index) => (
+                <span key={index} className={index < Math.round(skill.level / 10) ? 'is-on' : ''} />
+              ))}
             </div>
-            <div className="w-full h-3 bg-[#121212] border-2 border-[#333]">
-              <div
-                className="h-full bg-[#BE2E21]"
-                style={{ width: `${skill.level}%` }}
-              ></div>
-            </div>
+            <span className="diagnostic-row__value">{(skill.level / 10).toFixed(1)}</span>
           </div>
         ))}
       </div>
@@ -136,25 +141,30 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
     title: '联系',
     subtitle: 'CONTACT',
     body: (
-      <div className="space-y-8">
-        <p className="text-xl font-bold uppercase tracking-widest">
-          初始化通信协议...
+      <div className="transmission-record">
+        <p className="transmission-record__prompt">
+          &gt; COMMUNICATION PROTOCOL READY<span className="terminal-cursor" />
         </p>
-        <div className="w-full h-2 bg-[#BE2E21]"></div>
-        <div className="space-y-4 text-2xl font-black">
-          <a href="#" className="block hover:text-[#BE2E21] hover:translate-x-4 transition-transform">
-            [ EMAIL ] HELLO@SYSTEM.COM
+        <div className="transmission-channels">
+          <a href="mailto:hello@system.com">
+            <span>CH.01 / EMAIL</span>
+            <strong>HELLO@SYSTEM.COM</strong>
+            <small>OPEN CHANNEL ↗</small>
           </a>
-          <a href="#" className="block hover:text-[#BE2E21] hover:translate-x-4 transition-transform">
-            [ GITHUB ] @NEUTRINO
+          <a href="https://github.com/neutrino" target="_blank" rel="noreferrer">
+            <span>CH.02 / GITHUB</span>
+            <strong>@NEUTRINO</strong>
+            <small>EXTERNAL LINK ↗</small>
           </a>
-          <a href="#" className="block hover:text-[#BE2E21] hover:translate-x-4 transition-transform">
-            [ TWITTER ] @SYSTEM_CORE
+          <a href="https://x.com/system_core" target="_blank" rel="noreferrer">
+            <span>CH.03 / SOCIAL</span>
+            <strong>@SYSTEM_CORE</strong>
+            <small>EXTERNAL LINK ↗</small>
           </a>
         </div>
-        <div className="mt-12 p-6 border-4 border-[#BE2E21] bg-[#121212] text-[#BE2E21] font-bold uppercase">
-          <p>WARNING: EXPECT DELAYED TRANSMISSIONS ACROSS SECTORS.</p>
-        </div>
+        <p className="transmission-record__warning">
+          SIGNAL NOTICE / EXPECT DELAYED TRANSMISSIONS ACROSS SECTORS.
+        </p>
       </div>
     ),
   },

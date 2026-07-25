@@ -2,6 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -182,6 +183,104 @@ function ResponsiveCamera() {
       camera.updateProjectionMatrix();
     }
   }, [camera, size.width]);
+
+  return null;
+}
+
+function CameraDirector({
+  activeModule,
+  planetPositions,
+  controlsRef,
+}: {
+  activeModule: ModuleId | null;
+  planetPositions: React.MutableRefObject<THREE.Vector3[]>;
+  controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+}) {
+  const { camera, size } = useThree();
+  const homePosition = useRef(camera.position.clone());
+  const homeTarget = useRef(new THREE.Vector3(0, -3.5, 0));
+  const homeFov = useRef(camera instanceof THREE.PerspectiveCamera ? camera.fov : 44);
+  const wasActive = useRef(false);
+  const returningHome = useRef(false);
+  const desiredPosition = useMemo(() => new THREE.Vector3(), []);
+  const desiredTarget = useMemo(() => new THREE.Vector3(), []);
+
+  useEffect(() => {
+    const controls = controlsRef.current;
+
+    if (activeModule && !wasActive.current) {
+      homePosition.current.copy(camera.position);
+      if (controls) homeTarget.current.copy(controls.target);
+      if (camera instanceof THREE.PerspectiveCamera) homeFov.current = camera.fov;
+      returningHome.current = false;
+    } else if (!activeModule && wasActive.current) {
+      returningHome.current = true;
+    }
+
+    wasActive.current = Boolean(activeModule);
+  }, [activeModule, camera, controlsRef]);
+
+  useFrame((_, delta) => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    if (activeModule) {
+      const planetIndex = PLANETS.findIndex((planet) => planet.id === activeModule);
+      if (planetIndex < 0) return;
+
+      const planet = PLANETS[planetIndex];
+      const position = planetPositions.current[planetIndex];
+      const visualRadius = planet.size * (planet.hasRings ? 1.92 : 1);
+      const compact = size.width < 768;
+      const focusDistance = 8 + visualRadius * 4;
+      const easing = 1 - Math.exp(-delta * 2.8);
+
+      desiredPosition.set(
+        position.x,
+        position.y + focusDistance * (compact ? 0.63 : 0.52),
+        position.z + focusDistance * (compact ? 0.92 : 0.84),
+      );
+      desiredTarget.set(
+        position.x + (compact ? 0 : focusDistance * 0.145),
+        position.y - (compact ? focusDistance * 0.08 : 0),
+        position.z,
+      );
+
+      camera.position.lerp(desiredPosition, easing);
+      controls.target.lerp(desiredTarget, easing);
+
+      if (camera instanceof THREE.PerspectiveCamera) {
+        camera.fov = THREE.MathUtils.lerp(camera.fov, compact ? 43 : 38, easing);
+        camera.updateProjectionMatrix();
+      }
+
+      return;
+    }
+
+    if (!returningHome.current) return;
+
+    const easing = 1 - Math.exp(-delta * 3.4);
+    camera.position.lerp(homePosition.current, easing);
+    controls.target.lerp(homeTarget.current, easing);
+
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.fov = THREE.MathUtils.lerp(camera.fov, homeFov.current, easing);
+      camera.updateProjectionMatrix();
+    }
+
+    if (
+      camera.position.distanceToSquared(homePosition.current) < 0.002
+      && controls.target.distanceToSquared(homeTarget.current) < 0.002
+    ) {
+      camera.position.copy(homePosition.current);
+      controls.target.copy(homeTarget.current);
+      if (camera instanceof THREE.PerspectiveCamera) {
+        camera.fov = homeFov.current;
+        camera.updateProjectionMatrix();
+      }
+      returningHome.current = false;
+    }
+  });
 
   return null;
 }
@@ -799,19 +898,22 @@ function PlanetRing({ size }: { size: number }) {
   );
 }
 
-interface OrbitalSystemProps extends CanvasSceneProps {}
+interface OrbitalSystemProps extends CanvasSceneProps {
+  planetPositions: React.MutableRefObject<THREE.Vector3[]>;
+}
 
 function OrbitalSystem({
   activeModule,
   focusedModule,
   setActiveModule,
   setFocusedModule,
+  planetPositions,
 }: OrbitalSystemProps) {
   const { size } = useThree();
   const gridRef = useRef<THREE.PlaneGeometry>(null);
   const planetGroups = useRef<(THREE.Group | null)[]>([]);
   const planetSpinGroups = useRef<(THREE.Group | null)[]>([]);
-  const planetPositions = useRef(PLANETS.map(() => new THREE.Vector3()));
+  const orbitalTime = useRef(0);
   const orbitScale = useMemo(() => THREE.MathUtils.clamp(size.width / 820, 0.55, 1), [size.width]);
   const gridFadeRange = useMemo(() => {
     const orbitalEnvelope = Math.max(...PLANETS.map((planet) => (
@@ -896,8 +998,9 @@ function OrbitalSystem({
     });
   }, [orbitLines]);
 
-  useFrame(({ clock }, delta) => {
-    const elapsed = clock.getElapsedTime();
+  useFrame((_, delta) => {
+    orbitalTime.current += delta * (activeModule ? 0.08 : 1);
+    const elapsed = orbitalTime.current;
 
     PLANETS.forEach((planet, index) => {
       const angle = elapsed * planet.speed + index * Math.PI * 0.7;
@@ -1077,6 +1180,8 @@ function OrbitalSystem({
 
 export default function CanvasScene(props: CanvasSceneProps) {
   const dismissActiveModule = () => props.setActiveModule(null);
+  const planetPositions = useRef(PLANETS.map(() => new THREE.Vector3()));
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   return (
     <div className="absolute inset-0 z-0">
@@ -1095,7 +1200,9 @@ export default function CanvasScene(props: CanvasSceneProps) {
         <directionalLight position={[-16, 9, -20]} intensity={1.1} color="#BE2E21" />
 
         <OrbitControls
+          ref={controlsRef}
           target={[0, -3.5, 0]}
+          enabled={!props.activeModule}
           enableZoom
           enablePan={false}
           enableDamping
@@ -1107,13 +1214,19 @@ export default function CanvasScene(props: CanvasSceneProps) {
           maxDistance={110}
         />
 
+        <CameraDirector
+          activeModule={props.activeModule}
+          planetPositions={planetPositions}
+          controlsRef={controlsRef}
+        />
+
         <group
           onClick={(event) => {
             event.stopPropagation();
             dismissActiveModule();
           }}
         >
-          <OrbitalSystem {...props} />
+          <OrbitalSystem {...props} planetPositions={planetPositions} />
           <Sun />
         </group>
       </Canvas>
