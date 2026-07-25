@@ -197,34 +197,46 @@ function CameraDirector({
   controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
 }) {
   const { camera, size } = useThree();
-  const homePosition = useRef(camera.position.clone());
+  const homePosition = useRef(new THREE.Vector3(0, 28, 43));
   const homeTarget = useRef(new THREE.Vector3(0, -3.5, 0));
-  const homeFov = useRef(camera instanceof THREE.PerspectiveCamera ? camera.fov : 44);
+  const homeFov = useRef(44);
   const wasActive = useRef(false);
   const returningHome = useRef(false);
+  const viewOffsetX = useRef(0);
   const desiredPosition = useMemo(() => new THREE.Vector3(), []);
   const desiredTarget = useMemo(() => new THREE.Vector3(), []);
+
+  useEffect(() => () => {
+    if (camera instanceof THREE.PerspectiveCamera) camera.clearViewOffset();
+    if (controlsRef.current) controlsRef.current.enabled = true;
+  }, [camera]);
 
   useEffect(() => {
     const controls = controlsRef.current;
 
-    if (activeModule && !wasActive.current) {
-      homePosition.current.copy(camera.position);
-      if (controls) homeTarget.current.copy(controls.target);
-      if (camera instanceof THREE.PerspectiveCamera) homeFov.current = camera.fov;
+    if (activeModule) {
+      if (controls) controls.enabled = false;
       returningHome.current = false;
     } else if (!activeModule && wasActive.current) {
+      const compactHome = size.width < 640;
+      homePosition.current.set(0, compactHome ? 42 : 28, compactHome ? 64 : 43);
+      homeTarget.current.set(0, -3.5, 0);
+      homeFov.current = compactHome ? 50 : 44;
       returningHome.current = true;
+      if (controls) controls.enabled = false;
+    } else if (controls && !returningHome.current) {
+      controls.enabled = true;
     }
 
     wasActive.current = Boolean(activeModule);
-  }, [activeModule, camera, controlsRef]);
+  }, [activeModule, controlsRef, size.width]);
 
   useFrame((_, delta) => {
     const controls = controlsRef.current;
     if (!controls) return;
 
     if (activeModule) {
+      controls.enabled = false;
       const planetIndex = PLANETS.findIndex((planet) => planet.id === activeModule);
       if (planetIndex < 0) return;
 
@@ -241,7 +253,7 @@ function CameraDirector({
         position.z + focusDistance * (compact ? 0.92 : 0.84),
       );
       desiredTarget.set(
-        position.x + (compact ? 0 : focusDistance * 0.145),
+        position.x,
         position.y - (compact ? focusDistance * 0.08 : 0),
         position.z,
       );
@@ -251,22 +263,48 @@ function CameraDirector({
 
       if (camera instanceof THREE.PerspectiveCamera) {
         camera.fov = THREE.MathUtils.lerp(camera.fov, compact ? 43 : 38, easing);
-        camera.updateProjectionMatrix();
+        viewOffsetX.current = THREE.MathUtils.lerp(
+          viewOffsetX.current,
+          size.width * (compact ? 0.1 : 0.18),
+          easing,
+        );
+        camera.setViewOffset(
+          size.width,
+          size.height,
+          viewOffsetX.current,
+          0,
+          size.width,
+          size.height,
+        );
       }
+      camera.lookAt(controls.target);
 
       return;
     }
 
-    if (!returningHome.current) return;
+    if (!returningHome.current) {
+      controls.enabled = true;
+      return;
+    }
 
+    controls.enabled = false;
     const easing = 1 - Math.exp(-delta * 3.4);
     camera.position.lerp(homePosition.current, easing);
     controls.target.lerp(homeTarget.current, easing);
 
     if (camera instanceof THREE.PerspectiveCamera) {
       camera.fov = THREE.MathUtils.lerp(camera.fov, homeFov.current, easing);
-      camera.updateProjectionMatrix();
+      viewOffsetX.current = THREE.MathUtils.lerp(viewOffsetX.current, 0, easing);
+      camera.setViewOffset(
+        size.width,
+        size.height,
+        viewOffsetX.current,
+        0,
+        size.width,
+        size.height,
+      );
     }
+    camera.lookAt(controls.target);
 
     if (
       camera.position.distanceToSquared(homePosition.current) < 0.002
@@ -276,9 +314,12 @@ function CameraDirector({
       controls.target.copy(homeTarget.current);
       if (camera instanceof THREE.PerspectiveCamera) {
         camera.fov = homeFov.current;
-        camera.updateProjectionMatrix();
+        viewOffsetX.current = 0;
+        camera.clearViewOffset();
       }
+      camera.lookAt(homeTarget.current);
       returningHome.current = false;
+      controls.enabled = true;
     }
   });
 
@@ -1202,7 +1243,6 @@ export default function CanvasScene(props: CanvasSceneProps) {
         <OrbitControls
           ref={controlsRef}
           target={[0, -3.5, 0]}
-          enabled={!props.activeModule}
           enableZoom
           enablePan={false}
           enableDamping

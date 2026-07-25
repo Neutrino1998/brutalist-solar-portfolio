@@ -143,7 +143,7 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
     body: (
       <div className="transmission-record">
         <p className="transmission-record__prompt">
-          &gt; COMMUNICATION PROTOCOL READY<span className="terminal-cursor" />
+          &gt; COMMUNICATION PROTOCOL READY
         </p>
         <div className="transmission-channels">
           <a href="mailto:hello@system.com">

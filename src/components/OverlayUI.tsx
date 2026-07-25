@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ModuleId } from '../types';
 import { MODULE_CONTENT, NAV_NODES } from '../data';
 
@@ -10,28 +10,147 @@ interface OverlayUIProps {
   setFocusedModule: (id: ModuleId) => void;
 }
 
-const ARCHIVE_META: Record<ModuleId, { type: string; channel: string; status: string }> = {
+const ARCHIVE_META: Record<ModuleId, { type: string }> = {
   profile: {
     type: 'PERSONNEL RECORD',
-    channel: 'IDENTITY / BIOGRAPHIC',
-    status: 'VERIFIED / ACTIVE',
   },
   projects: {
     type: 'MISSION ARCHIVE',
-    channel: 'SELECTED OPERATIONS',
-    status: '02 RECORDS / READY',
   },
   skills: {
     type: 'CAPABILITY DIAGNOSTICS',
-    channel: 'SYSTEM PROFICIENCY',
-    status: 'NOMINAL / ONLINE',
   },
   contact: {
     type: 'TRANSMISSION CHANNEL',
-    channel: 'EXTERNAL COMMS',
-    status: 'LISTENING / OPEN',
   },
 };
+
+const LOCATOR_LABELS: Record<ModuleId, string> = {
+  profile: 'PROFILE',
+  projects: 'WORKS',
+  skills: 'SKILL',
+  contact: 'CONTACT',
+};
+
+const TERMINAL_LOGS = [
+  '[00.000] WAKE / ARCHIVE KERNEL',
+  '[00.041] MOUNT / EPHEMERIS TABLE',
+  '[00.086] SYNC / ORBITAL CLOCK',
+  '[00.133] READ / CELESTIAL REGISTRY',
+  '[00.181] CHECK / GRID DEFORMATION',
+  '[00.227] LOAD / OBJECT TELEMETRY',
+  '[00.284] TRACE / SIGNAL VECTOR',
+  '[00.346] RESOLVE / CAMERA SOLUTION',
+  '[00.411] VERIFY / ARCHIVE INDEX',
+  '[00.493] CALIBRATE / DEPTH FIELD',
+  '[00.588] ALIGN / VIEWPORT TARGET',
+  '[00.672] HANDSHAKE / DATA NODE',
+] as const;
+
+const DECODE_GLYPHS = ['#', '0', '1', 'X', '/', '\\', '[', ']', '+', '-'] as const;
+
+function decodeFrame(target: string, progress: number, tick: number) {
+  if (progress >= 1) return target;
+  if (progress <= 0) return '#';
+
+  const visibleLength = Math.min(
+    target.length,
+    Math.max(1, Math.ceil(progress * target.length * 2.2)),
+  );
+  const lockedLength = Math.min(
+    visibleLength,
+    Math.floor((progress ** 1.65) * target.length),
+  );
+
+  return Array.from({ length: visibleLength }, (_, index) => {
+    if (index < lockedLength) return target[index];
+    return DECODE_GLYPHS[(tick + index * 3) % DECODE_GLYPHS.length];
+  }).join('');
+}
+
+function ArchiveLocator({ index, label }: { index: string; label: string }) {
+  const initialFrame = { index: '#', label: '#' };
+  const [decoded, setDecoded] = useState(initialFrame);
+  const renderedRef = useRef(initialFrame);
+  const targetRef = useRef<{ index: string; label: string } | null>(null);
+
+  useEffect(() => {
+    const nextTarget = { index, label };
+    const previousTarget = targetRef.current;
+    const isSwitch = previousTarget !== null
+      && (previousTarget.index !== index || previousTarget.label !== label);
+    targetRef.current = nextTarget;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      renderedRef.current = nextTarget;
+      setDecoded(nextTarget);
+      return undefined;
+    }
+
+    let cancelled = false;
+    let animationFrame = 0;
+
+    const setFrame = (frame: { index: string; label: string }) => {
+      renderedRef.current = frame;
+      setDecoded(frame);
+    };
+
+    const animate = (
+      duration: number,
+      onFrame: (progress: number, tick: number) => void,
+    ) => new Promise<void>((resolve) => {
+      const startedAt = window.performance.now();
+
+      const update = (now: number) => {
+        if (cancelled) return;
+        const progress = Math.min(1, (now - startedAt) / duration);
+        onFrame(progress, Math.floor(progress * 8));
+        if (progress < 1) {
+          animationFrame = window.requestAnimationFrame(update);
+        } else {
+          resolve();
+        }
+      };
+
+      animationFrame = window.requestAnimationFrame(update);
+    });
+
+    const runDecode = async () => {
+      if (isSwitch) {
+        const outgoing = renderedRef.current;
+        await animate(95, (progress, tick) => {
+          const reverseProgress = 1 - progress;
+          setFrame({
+            index: decodeFrame(outgoing.index, reverseProgress, tick + 5),
+            label: decodeFrame(outgoing.label, reverseProgress, tick + 11),
+          });
+        });
+      }
+
+      if (cancelled) return;
+      await animate(215, (progress, tick) => {
+        setFrame({
+          index: decodeFrame(nextTarget.index, progress, tick),
+          label: decodeFrame(nextTarget.label, progress, tick + 4),
+        });
+      });
+    };
+
+    void runDecode();
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(animationFrame);
+    };
+  }, [index, label]);
+
+  return (
+    <div className="archive-terminal__locator" aria-hidden="true">
+      <span className="archive-terminal__index">{decoded.index}</span>
+      <span className="archive-terminal__locator-word">{decoded.label}</span>
+    </div>
+  );
+}
 
 export default function OverlayUI({
   activeModule,
@@ -42,7 +161,11 @@ export default function OverlayUI({
   const activeData = activeModule ? MODULE_CONTENT[activeModule] : null;
   const activeNode = NAV_NODES.find((node) => node.id === activeModule);
   const activeMeta = activeModule ? ARCHIVE_META[activeModule] : null;
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const terminalRef = useRef<HTMLElement>(null);
+  const previousActiveModuleRef = useRef<ModuleId | null>(null);
+  const isArchiveSwitch = activeModule !== null
+    && previousActiveModuleRef.current !== null
+    && previousActiveModuleRef.current !== activeModule;
 
   const openModule = (id: ModuleId) => {
     setFocusedModule(id);
@@ -50,9 +173,13 @@ export default function OverlayUI({
   };
 
   useEffect(() => {
+    previousActiveModuleRef.current = activeModule;
+  }, [activeModule]);
+
+  useEffect(() => {
     if (!activeModule) return undefined;
 
-    const focusTimer = window.setTimeout(() => closeButtonRef.current?.focus(), 40);
+    const focusTimer = window.setTimeout(() => terminalRef.current?.focus(), 40);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setActiveModule(null);
@@ -159,7 +286,9 @@ export default function OverlayUI({
       <AnimatePresence mode="wait">
         {activeModule && activeData && activeNode && activeMeta && (
           <motion.section
-            key={activeModule}
+            ref={terminalRef}
+            key="archive-terminal-shell"
+            tabIndex={-1}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -175,72 +304,80 @@ export default function OverlayUI({
             <div className="archive-terminal__frame" aria-hidden="true" />
 
             <header className="archive-terminal__header">
-              <div className="archive-terminal__boot" aria-label="终端连接状态">
-                <span>&gt; ACQUIRING OBJECT {activeNode.index}</span>
-                <span>&gt; ORBIT LOCKED / SIGNAL 100%</span>
-                <span>&gt; ARCHIVE NODE / {activeData.subtitle} / OPEN<span className="terminal-cursor" /></span>
+              <div className={`archive-terminal__stream ${isArchiveSwitch ? 'is-switching' : ''}`}>
+                <div className="archive-terminal__log-history" aria-hidden="true">
+                  {TERMINAL_LOGS.map((log) => <span key={log}>{log}</span>)}
+                  <span>[00.744] SELECT / OBJECT {activeNode.index}</span>
+                  <span>[00.819] MATCH / {activeData.subtitle}</span>
+                  <span>[00.901] LOCK / COMPLETE</span>
+                </div>
+                <div
+                  key={`archive-boot-${activeModule}`}
+                  className={`archive-terminal__boot ${isArchiveSwitch ? 'is-switching' : ''}`}
+                  aria-label="终端连接状态"
+                >
+                  <span>&gt; ACQUIRING OBJECT {activeNode.index}</span>
+                  <span>&gt; ORBIT LOCKED / SIGNAL 100%</span>
+                  <span>&gt; ARCHIVE NODE / {activeData.subtitle} / OPEN<span className="terminal-cursor" /></span>
+                </div>
               </div>
-              <button
-                ref={closeButtonRef}
-                type="button"
-                onClick={() => setActiveModule(null)}
-                className="archive-terminal__close"
-                aria-label="关闭档案终端"
-              >
-                <span aria-hidden="true">×</span>
-                <small>ESC / CLOSE</small>
-              </button>
             </header>
 
-            <div className="archive-terminal__locator" aria-hidden="true">
-              <span className="archive-terminal__index">{activeNode.index}</span>
-              <span className="archive-terminal__locator-line" />
-              <span className="archive-terminal__locator-copy">
-                OBJECT LOCKED<br />
-                {activeNode.systemLabel}<br />
-                COORD / LIVE
-              </span>
-            </div>
+            <ArchiveLocator index={activeNode.index} label={LOCATOR_LABELS[activeModule]} />
 
-            <main className="archive-terminal__record">
-              <div className="archive-terminal__eyebrow">
-                <span>SYS.ARCHIVE / NODE {activeNode.index}</span>
-                <span>{activeMeta.status}</span>
-              </div>
-              <div className="archive-terminal__title-row">
-                <div>
-                  <p>{activeMeta.type}</p>
-                  <h2 id="archive-terminal-title">{activeData.title}</h2>
+            <AnimatePresence mode="wait">
+              <motion.main
+                key={activeModule}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                className="archive-terminal__record"
+              >
+                <div className="archive-terminal__eyebrow">
+                  <span>SYS.ARCHIVE / NODE {activeNode.index}</span>
+                  <span>{activeMeta.type}</span>
                 </div>
-                <span>{activeData.subtitle}</span>
-              </div>
-              <p className="archive-terminal__channel">
-                CHANNEL / {activeMeta.channel}
-              </p>
-              <div className="archive-terminal__body">{activeData.body}</div>
-            </main>
+                <div className="archive-terminal__title-row">
+                  <h2 id="archive-terminal-title">{activeData.title}</h2>
+                  <span>{activeData.subtitle}</span>
+                </div>
+                <div className="archive-terminal__body">{activeData.body}</div>
+              </motion.main>
+            </AnimatePresence>
 
             <footer className="archive-terminal__footer">
               <div className="archive-terminal__footer-status">
-                <span className="archive-terminal__pulse" />
+                <span className="archive-terminal__pulse animate-pulse" />
                 SESSION ACTIVE
                 <span className="hidden sm:inline">/ ← → SWITCH NODE</span>
               </div>
-              <nav aria-label="切换档案节点" className="archive-terminal__nav">
-                {NAV_NODES.map((node) => (
+              <div className="archive-terminal__controls">
+                <nav aria-label="切换档案节点" className="archive-terminal__nav">
+                  {NAV_NODES.map((node) => (
+                    <button
+                      key={node.id}
+                      type="button"
+                      onClick={() => openModule(node.id)}
+                      aria-label={`切换到${node.title}档案`}
+                      aria-pressed={activeModule === node.id}
+                      className={activeModule === node.id ? 'is-active' : ''}
+                    >
+                      <span>{node.index}</span>
+                      <small>{node.subtitle}</small>
+                    </button>
+                  ))}
+                </nav>
                   <button
-                    key={node.id}
                     type="button"
-                    onClick={() => openModule(node.id)}
-                    aria-label={`切换到${node.title}档案`}
-                    aria-pressed={activeModule === node.id}
-                    className={activeModule === node.id ? 'is-active' : ''}
+                    onClick={() => setActiveModule(null)}
+                    className="archive-terminal__close"
+                    aria-label="关闭档案终端"
                   >
-                    <span>{node.index}</span>
-                    <small>{node.subtitle}</small>
+                    <span aria-hidden="true">×</span>
+                    <small>ESC / CLOSE</small>
                   </button>
-                ))}
-              </nav>
+              </div>
             </footer>
           </motion.section>
         )}
