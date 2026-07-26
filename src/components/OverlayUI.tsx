@@ -15,13 +15,13 @@ interface OverlayUIProps {
 
 const ARCHIVE_META: Record<ModuleId, { type: string }> = {
   profile: {
-    type: 'PERSONNEL RECORD',
+    type: 'PUBLIC PROFILE / SANITIZED',
   },
   projects: {
-    type: 'MISSION ARCHIVE',
+    type: 'SELECTED WORK / PUBLIC SAFE',
   },
   skills: {
-    type: 'CAPABILITY DIAGNOSTICS',
+    type: 'ENGINEERING CAPABILITY',
   },
   contact: {
     type: 'TRANSMISSION CHANNEL',
@@ -30,24 +30,24 @@ const ARCHIVE_META: Record<ModuleId, { type: string }> = {
 
 const LOCATOR_LABELS: Record<ModuleId, string> = {
   profile: 'PROFILE',
-  projects: 'WORKS',
-  skills: 'SKILL',
+  projects: 'PROJECTS',
+  skills: 'SYSTEMS',
   contact: 'CONTACT',
 };
 
 const TERMINAL_LOGS = [
-  '[00.000] WAKE / ARCHIVE KERNEL',
-  '[00.041] MOUNT / EPHEMERIS TABLE',
-  '[00.086] SYNC / ORBITAL CLOCK',
-  '[00.133] READ / CELESTIAL REGISTRY',
-  '[00.181] CHECK / GRID DEFORMATION',
-  '[00.227] LOAD / OBJECT TELEMETRY',
-  '[00.284] TRACE / SIGNAL VECTOR',
-  '[00.346] RESOLVE / CAMERA SOLUTION',
-  '[00.411] VERIFY / ARCHIVE INDEX',
-  '[00.493] CALIBRATE / DEPTH FIELD',
-  '[00.588] ALIGN / VIEWPORT TARGET',
-  '[00.672] HANDSHAKE / DATA NODE',
+  '[00.000] WAKE / PROFILE KERNEL',
+  '[00.041] MOUNT / CAREER GRAPH',
+  '[00.086] SYNC / PROJECT INDEX',
+  '[00.133] READ / PUBLIC RECORDS',
+  '[00.181] CHECK / DISCLOSURE BOUNDARY',
+  '[00.227] LOAD / CAPABILITY MAP',
+  '[00.284] TRACE / AGENT RUNTIME',
+  '[00.346] RESOLVE / DELIVERY STACK',
+  '[00.411] VERIFY / SAFE METADATA',
+  '[00.493] CALIBRATE / SYSTEM SIGNAL',
+  '[00.588] ALIGN / ARCHIVE NODE',
+  '[00.672] HANDSHAKE / COMPLETE',
 ] as const;
 
 function formatLocalTime(date: Date) {
@@ -246,13 +246,13 @@ export default function OverlayUI({
         aria-hidden={Boolean(activeModule)}
       >
         <h1 className="text-5xl font-black uppercase tracking-[-0.07em] leading-[0.78] text-[#DED8C4] md:text-7xl lg:text-[104px]">
-          主系统<br />
-          <span className="text-[#BE2E21]">CORE</span>
+          智能体中枢<br />
+          <span className="text-[#BE2E21]">KERNEL</span>
         </h1>
         <div className="mt-5 h-1.5 w-20 bg-[#BE2E21] md:w-28" />
         <p className="mt-4 hidden max-w-xs text-[10px] font-bold uppercase leading-relaxed tracking-[0.22em] text-[#DED8C4]/55 md:block">
-          Visual engineer / spatial designer<br />
-          Inner rock / belt / outer giants
+          Kangyi Kong / 孔康懿<br />
+          AI agent platform engineer
         </p>
       </header>
 
@@ -270,7 +270,7 @@ export default function OverlayUI({
           }}
           className="mb-1 hidden text-[9px] font-bold uppercase tracking-[0.3em] text-[#DED8C4]/45 md:block"
         >
-          Archive ref. 2026-C
+          Public profile / 2026.07
         </motion.p>
         {NAV_NODES.map((node, nodeIndex) => {
           const isFocused = focusedModule === node.id;
@@ -337,9 +337,9 @@ export default function OverlayUI({
         <div>
           <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-[#BE2E21] md:text-[10px]">
             <span className="h-2 w-2 animate-pulse rounded-full bg-[#BE2E21]" />
-            System active
+            Profile online
           </div>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/40">100% stability</p>
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/40">5+ years / systems active</p>
         </div>
         <div className="text-right">
           <time
@@ -348,7 +348,7 @@ export default function OverlayUI({
           >
             {localTime}
           </time>
-          <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.24em] text-[#DED8C4]/40">Orbital timestamp</p>
+          <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.24em] text-[#DED8C4]/40">Local timestamp</p>
         </div>
       </footer>
 
@@ -411,7 +411,11 @@ export default function OverlayUI({
                   <h2 id="archive-terminal-title">{activeData.title}</h2>
                   <span>{activeData.subtitle}</span>
                 </div>
-                <div className="archive-terminal__body">{activeData.body}</div>
+                <div
+                  className={`archive-terminal__body ${activeModule === 'profile' ? 'archive-terminal__body--profile' : ''}`}
+                >
+                  {activeData.body}
+                </div>
               </motion.main>
             </AnimatePresence>
 

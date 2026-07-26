@@ -517,6 +517,10 @@
   animation: archive-reveal 560ms cubic-bezier(0.22, 1, 0.36, 1) 500ms both;
 }
 
+.archive-terminal__body.archive-terminal__body--profile {
+  padding-top: 0.75rem;
+}
+
 .archive-terminal__footer {
   position: absolute;
   z-index: 4;
@@ -642,10 +646,15 @@
   color: #121212;
 }
 
+.personnel-record {
+  --personnel-grid-columns: minmax(8rem, 0.65fr) 1.35fr;
+  --personnel-grid-gap: 1.5rem;
+}
+
 .personnel-record__identity {
   display: grid;
-  grid-template-columns: minmax(8rem, 0.65fr) 1.35fr;
-  gap: 0.75rem 1.5rem;
+  grid-template-columns: var(--personnel-grid-columns);
+  gap: 0.75rem var(--personnel-grid-gap);
   align-items: start;
 }
 
@@ -655,7 +664,7 @@
 .mission-entry__content > p,
 .diagnostic-row__code,
 .diagnostic-row__value,
-.transmission-record__prompt,
+.system-status,
 .transmission-channels span,
 .transmission-channels small,
 .transmission-record__warning {
@@ -690,7 +699,8 @@
 
 .archive-ledger > div {
   display: grid;
-  grid-template-columns: minmax(8rem, 0.65fr) 1.35fr;
+  grid-template-columns: var(--personnel-grid-columns);
+  column-gap: var(--personnel-grid-gap);
   padding: 0.52rem 0;
   border-bottom: 1px solid rgb(222 216 196 / 15%);
 }
@@ -712,6 +722,19 @@
   font-weight: 600;
 }
 
+.personnel-record > blockquote:first-child {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1.35;
+}
+
+.personnel-record > blockquote:first-child + .personnel-record__identity {
+  border-top: 1px solid rgb(222 216 196 / 24%);
+  padding-top: 0.75rem;
+}
+
 .mission-archive {
   border-top: 1px solid rgb(222 216 196 / 34%);
 }
@@ -722,6 +745,11 @@
   gap: 1.5rem;
   padding: clamp(0.9rem, 2vh, 1.4rem) 0;
   border-bottom: 1px solid rgb(222 216 196 / 24%);
+}
+
+.personnel-record__education .mission-entry {
+  grid-template-columns: var(--personnel-grid-columns);
+  column-gap: var(--personnel-grid-gap);
 }
 
 .mission-entry__rail {
@@ -805,15 +833,23 @@
   white-space: nowrap;
 }
 
-.transmission-record__prompt {
+.system-status {
   padding: 0.75rem;
   border: 1px solid rgb(190 46 33 / 64%);
   color: #be2e21;
 }
 
+.systems-diagnostics .system-status {
+  margin-bottom: 1.25rem;
+}
+
 .transmission-channels {
   border-top: 1px solid rgb(222 216 196 / 24%);
   margin-top: 1.25rem;
+}
+
+.transmission-record > .transmission-channels:first-child {
+  margin-top: 0;
 }
 
 .transmission-channels a {
@@ -855,6 +891,60 @@
   margin-top: 1.25rem;
   color: rgb(222 216 196 / 34%);
   font-size: 8px;
+}
+
+.signal-studies {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+  width: min(100%, 40rem);
+  margin-top: 0.65rem;
+  margin-left: auto;
+  gap: clamp(0.45rem, 1vw, 0.7rem);
+}
+
+.signal-study {
+  position: relative;
+  aspect-ratio: 1;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgb(222 216 196 / 22%);
+  background:
+    linear-gradient(rgb(222 216 196 / 3%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(222 216 196 / 3%) 1px, transparent 1px),
+    rgb(222 216 196 / 1.5%);
+  background-size: 25% 25%;
+}
+
+.signal-study::after {
+  position: absolute;
+  right: 0.45rem;
+  bottom: 0.45rem;
+  width: 3px;
+  height: 3px;
+  background: #be2e21;
+  content: '';
+}
+
+.signal-study__label {
+  position: absolute;
+  z-index: 1;
+  top: 0.45rem;
+  left: 0.55rem;
+  color: rgb(222 216 196 / 42%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.signal-study canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 @media (max-height: 760px) and (min-width: 768px) {
@@ -996,6 +1086,7 @@
   .archive-ledger > div { gap: 0.2rem; }
 
   .mission-entry { gap: 0.65rem; }
+  .personnel-record__education .mission-entry { grid-template-columns: 1fr; }
   .mission-entry__rail {
     flex-direction: row;
   }
@@ -1021,6 +1112,18 @@
   .transmission-channels small {
     grid-column: 2;
     grid-row: 1 / 3;
+  }
+
+  .signal-studies {
+    width: 100%;
+    gap: 0.4rem;
+  }
+
+  .signal-study__label {
+    top: 0.38rem;
+    left: 0.42rem;
+    font-size: 6px;
+    letter-spacing: 0.08em;
   }
 }
 
