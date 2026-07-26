@@ -11,9 +11,18 @@ import { ModuleId } from './types';
 
 export default function App() {
   const [activeModule, setActiveModuleState] = useState<ModuleId | null>(null);
-  const [focusedModule, setFocusedModule] = useState<ModuleId>('projects');
+  const [focusedModule, setFocusedModuleState] = useState<ModuleId>('projects');
   const activeModuleRef = useRef<ModuleId | null>(null);
+  const focusedModuleRef = useRef<ModuleId>('projects');
   const archiveSound = useArchiveSound();
+
+  const setFocusedModule = useCallback((nextModule: ModuleId) => {
+    if (focusedModuleRef.current === nextModule) return;
+
+    focusedModuleRef.current = nextModule;
+    archiveSound.play('focus');
+    setFocusedModuleState(nextModule);
+  }, [archiveSound.play]);
 
   const setActiveModule = useCallback((nextModule: ModuleId | null) => {
     const previousModule = activeModuleRef.current;

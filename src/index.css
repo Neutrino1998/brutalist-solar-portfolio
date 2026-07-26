@@ -174,62 +174,30 @@
   background: #be2e21;
 }
 
-.sound-toggle {
-  display: inline-flex;
-  height: 2rem;
-  align-items: center;
-  gap: 0.38rem;
-  padding: 0 0.58rem;
-  border: 1px solid rgb(222 216 196 / 26%);
-  background: rgb(18 18 18 / 68%);
-  color: rgb(222 216 196 / 48%);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  cursor: pointer;
-  pointer-events: auto;
-  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+.sound-menu-button:hover,
+.sound-menu-button:focus-visible {
+  color: #121212;
+  transition-delay: 90ms;
 }
 
-.sound-toggle:hover,
-.sound-toggle:focus-visible {
-  outline: none;
-  border-color: rgb(222 216 196 / 68%);
-  color: #ded8c4;
+.sound-menu-button:hover::before,
+.sound-menu-button:focus-visible::before {
+  transform: scaleX(1);
 }
 
-.sound-toggle__lamp {
-  width: 0.38rem;
-  height: 0.38rem;
-  flex: 0 0 auto;
-  border: 1px solid rgb(222 216 196 / 40%);
-  border-radius: 50%;
-  background: transparent;
+.sound-menu-button__status {
+  background: #5a5750;
+  transition: background-color 100ms ease 70ms, box-shadow 100ms ease;
 }
 
-.sound-toggle.is-on .sound-toggle__lamp {
-  border-color: #be2e21;
+.sound-menu-button.is-on .sound-menu-button__status {
   background: #be2e21;
   box-shadow: 0 0 8px rgb(190 46 33 / 54%);
 }
 
-.sound-toggle__value {
-  color: #ded8c4;
-}
-
-.sound-toggle--compact {
-  display: grid;
-  width: 2.6rem;
-  height: 2.6rem;
-  grid-template-columns: auto auto;
-  place-content: center;
-  gap: 0.28rem;
-  padding: 0;
-}
-
-.sound-toggle--compact .sound-toggle__label {
-  display: none;
+.sound-menu-button:hover:not(.is-on) .sound-menu-button__status,
+.sound-menu-button:focus-visible:not(.is-on) .sound-menu-button__status {
+  background: #121212;
 }
 
 @keyframes archive-reveal {

@@ -141,25 +141,29 @@ function ArchiveLocator({ index, label }: { index: string; label: string }) {
 function SoundToggle({
   enabled,
   onToggle,
-  compact = false,
+  archiveOpen,
 }: {
   enabled: boolean;
   onToggle: () => void;
-  compact?: boolean;
+  archiveOpen: boolean;
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onToggle}
       aria-label={enabled ? '关闭界面音效' : '开启界面音效'}
       aria-pressed={enabled}
       title={enabled ? 'Sound on — click to mute' : 'Sound off — click to enable'}
-      className={`sound-toggle ${compact ? 'sound-toggle--compact' : ''} ${enabled ? 'is-on' : ''}`}
+      initial={{ opacity: 0, x: 12 }}
+      animate={{ opacity: archiveOpen ? 0 : 1, x: archiveOpen ? 12 : 0 }}
+      transition={{ duration: archiveOpen ? 0.18 : 0.28, ease: [0.22, 1, 0.36, 1] }}
+      tabIndex={archiveOpen ? -1 : 0}
+      className={`sound-menu-button module-nav-button group relative isolate flex h-9 min-w-[min(9rem,35vw)] items-center justify-between gap-4 overflow-hidden border px-3 text-left text-[10px] font-black uppercase tracking-[0.16em] md:min-w-44 ${enabled ? 'is-on' : ''}`}
     >
-      <span className="sound-toggle__lamp" aria-hidden="true" />
-      <span className="sound-toggle__label">SND</span>
-      <span className="sound-toggle__value">{enabled ? 'ON' : 'OFF'}</span>
-    </button>
+      <span className="relative z-10 text-xs">{enabled ? 'ON' : 'OFF'}</span>
+      <span className="relative z-10">SOUND</span>
+      <span className="sound-menu-button__status relative z-10 hidden h-1.5 w-1.5 rounded-full md:block" aria-hidden="true" />
+    </motion.button>
   );
 }
 
@@ -297,6 +301,23 @@ export default function OverlayUI({
             </motion.button>
           );
         })}
+        <motion.p
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: activeModule ? 0 : 1, x: activeModule ? 12 : 0 }}
+          transition={{
+            duration: activeModule ? 0.18 : 0.28,
+            delay: activeModule ? 0.14 : 0.2,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+          className="mb-1 mt-2 hidden text-[9px] font-bold uppercase tracking-[0.3em] text-[#DED8C4]/45 md:block"
+        >
+          Audio ref. Mech-AB
+        </motion.p>
+        <SoundToggle
+          enabled={soundEnabled}
+          onToggle={toggleSound}
+          archiveOpen={Boolean(activeModule)}
+        />
       </nav>
 
       <div
@@ -313,17 +334,12 @@ export default function OverlayUI({
         className={`absolute bottom-8 left-8 right-8 z-10 flex items-end justify-between transition-all duration-500 md:bottom-16 md:left-16 md:right-16 ${activeModule ? 'translate-y-3 opacity-0' : 'translate-y-0 opacity-100'}`}
         aria-hidden={Boolean(activeModule)}
       >
-        <div className="flex items-end gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-[#BE2E21] md:text-[10px]">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-[#BE2E21]" />
-              System active
-            </div>
-            <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/40">100% stability</p>
+        <div>
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-[#BE2E21] md:text-[10px]">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#BE2E21]" />
+            System active
           </div>
-          {!activeModule && (
-            <SoundToggle enabled={soundEnabled} onToggle={toggleSound} />
-          )}
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/40">100% stability</p>
         </div>
         <div className="text-right">
           <time
@@ -421,11 +437,6 @@ export default function OverlayUI({
                     </button>
                   ))}
                 </nav>
-                  <SoundToggle
-                    enabled={soundEnabled}
-                    onToggle={toggleSound}
-                    compact
-                  />
                   <button
                     type="button"
                     onClick={() => setActiveModule(null)}
