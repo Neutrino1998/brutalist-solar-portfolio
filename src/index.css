@@ -81,7 +81,8 @@
   isolation: isolate;
   overflow: hidden;
   margin-left: -2px;
-  width: 180px;
+  width: max-content;
+  min-width: 180px;
   height: 56px;
   padding: 0.5rem 1rem;
   background-image: linear-gradient(#ded8c4, #ded8c4);
@@ -1137,7 +1138,8 @@
   }
 
   .planet-selection__label {
-    width: 132px;
+    width: max-content;
+    min-width: 132px;
     height: 42px;
     padding: 0.35rem 0.55rem;
   }
