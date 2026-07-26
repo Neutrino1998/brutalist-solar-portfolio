@@ -9,6 +9,8 @@ interface OverlayUIProps {
   focusedModule: ModuleId;
   setActiveModule: (id: ModuleId | null) => void;
   setFocusedModule: (id: ModuleId) => void;
+  soundEnabled: boolean;
+  toggleSound: () => void;
 }
 
 const ARCHIVE_META: Record<ModuleId, { type: string }> = {
@@ -136,11 +138,38 @@ function ArchiveLocator({ index, label }: { index: string; label: string }) {
   );
 }
 
+function SoundToggle({
+  enabled,
+  onToggle,
+  compact = false,
+}: {
+  enabled: boolean;
+  onToggle: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={enabled ? '关闭界面音效' : '开启界面音效'}
+      aria-pressed={enabled}
+      title={enabled ? 'Sound on — click to mute' : 'Sound off — click to enable'}
+      className={`sound-toggle ${compact ? 'sound-toggle--compact' : ''} ${enabled ? 'is-on' : ''}`}
+    >
+      <span className="sound-toggle__lamp" aria-hidden="true" />
+      <span className="sound-toggle__label">SND</span>
+      <span className="sound-toggle__value">{enabled ? 'ON' : 'OFF'}</span>
+    </button>
+  );
+}
+
 export default function OverlayUI({
   activeModule,
   focusedModule,
   setActiveModule,
   setFocusedModule,
+  soundEnabled,
+  toggleSound,
 }: OverlayUIProps) {
   const activeData = activeModule ? MODULE_CONTENT[activeModule] : null;
   const activeNode = NAV_NODES.find((node) => node.id === activeModule);
@@ -284,12 +313,17 @@ export default function OverlayUI({
         className={`absolute bottom-8 left-8 right-8 z-10 flex items-end justify-between transition-all duration-500 md:bottom-16 md:left-16 md:right-16 ${activeModule ? 'translate-y-3 opacity-0' : 'translate-y-0 opacity-100'}`}
         aria-hidden={Boolean(activeModule)}
       >
-        <div>
-          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-[#BE2E21] md:text-[10px]">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[#BE2E21]" />
-            System active
+        <div className="flex items-end gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-[#BE2E21] md:text-[10px]">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#BE2E21]" />
+              System active
+            </div>
+            <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/40">100% stability</p>
           </div>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#DED8C4]/40">100% stability</p>
+          {!activeModule && (
+            <SoundToggle enabled={soundEnabled} onToggle={toggleSound} />
+          )}
         </div>
         <div className="text-right">
           <time
@@ -387,6 +421,11 @@ export default function OverlayUI({
                     </button>
                   ))}
                 </nav>
+                  <SoundToggle
+                    enabled={soundEnabled}
+                    onToggle={toggleSound}
+                    compact
+                  />
                   <button
                     type="button"
                     onClick={() => setActiveModule(null)}

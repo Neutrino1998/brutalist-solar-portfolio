@@ -3,14 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import CanvasScene from './components/CanvasScene';
 import OverlayUI from './components/OverlayUI';
+import { useArchiveSound } from './hooks/useArchiveSound';
 import { ModuleId } from './types';
 
 export default function App() {
-  const [activeModule, setActiveModule] = useState<ModuleId | null>(null);
+  const [activeModule, setActiveModuleState] = useState<ModuleId | null>(null);
   const [focusedModule, setFocusedModule] = useState<ModuleId>('projects');
+  const activeModuleRef = useRef<ModuleId | null>(null);
+  const archiveSound = useArchiveSound();
+
+  const setActiveModule = useCallback((nextModule: ModuleId | null) => {
+    const previousModule = activeModuleRef.current;
+    if (previousModule === nextModule) return;
+
+    activeModuleRef.current = nextModule;
+
+    if (previousModule === null && nextModule !== null) {
+      archiveSound.play('open');
+    } else if (previousModule !== null && nextModule === null) {
+      archiveSound.play('close');
+    } else {
+      archiveSound.play('switch');
+    }
+
+    setActiveModuleState(nextModule);
+  }, [archiveSound.play]);
 
   return (
     <div className="w-full h-screen bg-[#121212] text-[#DED8C4] overflow-hidden relative font-sans selection:bg-[#DED8C4] selection:text-[#121212]" style={{ backgroundColor: '#121212' }}>
@@ -34,6 +54,8 @@ export default function App() {
         focusedModule={focusedModule}
         setActiveModule={setActiveModule}
         setFocusedModule={setFocusedModule}
+        soundEnabled={archiveSound.enabled}
+        toggleSound={archiveSound.toggle}
       />
     </div>
   );
