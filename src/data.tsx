@@ -141,7 +141,7 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
                 target="_blank"
                 rel="noreferrer"
               >
-                ArtifactFlow ↗
+                ArtifactFlow <span className="mission-entry__link-arrow" aria-hidden="true">↗</span>
               </a>
             </h3>
             <span>
@@ -165,7 +165,7 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
                 target="_blank"
                 rel="noreferrer"
               >
-                LLM Workshop ↗
+                LLM Workshop <span className="mission-entry__link-arrow" aria-hidden="true">↗</span>
               </a>
             </h3>
             <span>
@@ -188,7 +188,7 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
                 target="_blank"
                 rel="noreferrer"
               >
-                Brutalist Solar Portfolio ↗
+                Brutalist Solar Portfolio <span className="mission-entry__link-arrow" aria-hidden="true">↗</span>
               </a>
             </h3>
             <span>

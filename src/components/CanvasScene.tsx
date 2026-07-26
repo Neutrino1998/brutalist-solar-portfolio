@@ -493,7 +493,7 @@ function SelectionFrame({
           >
             <span className="planet-selection__line h-0.5 w-8" />
             <span className="planet-selection__label border-l-2 border-[#DED8C4]">
-              <span className="planet-selection__label-base block">
+              <span className="planet-selection__label-base">
                 <span className="planet-selection__meta block text-[10px] font-black uppercase tracking-[0.2em] text-[#BE2E21]">
                   {index} / {systemLabel}
                 </span>
