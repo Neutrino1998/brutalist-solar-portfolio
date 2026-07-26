@@ -28,10 +28,11 @@ const SUN_WELL_DEPTH = SUN_CENTER_DEPTH + SUN_RADIUS + SUN_GRID_CLEARANCE;
 const BASE_CAMERA_DISTANCE = 54;
 const BASE_FOG_NEAR = 42;
 const BASE_FOG_FAR = 105;
-const GRID_SIZE = 80;
+const GRID_SIZE = 96;
+const GRID_SEGMENTS = 86;
 const GRID_FADE_END_LIMIT = GRID_SIZE / 2 - 0.5;
-const GRID_FADE_WIDTH = 5.5;
-const GRID_ORBIT_PADDING = 1.5;
+const GRID_FADE_WIDTH = 12;
+const GRID_ORBIT_PADDING = 3;
 const ORBIT_LINE_GRID_CLEARANCE = 0.12;
 const RING_GRID_CLEARANCE_FACTOR = 0.35;
 const GRID_RENDER_ORDER = 0;
@@ -1187,7 +1188,7 @@ function OrbitalSystem({
         position={[0, GRID_BASE_Y, 0]}
         renderOrder={GRID_RENDER_ORDER}
       >
-        <planeGeometry ref={gridRef} args={[GRID_SIZE, GRID_SIZE, 72, 72]} />
+        <planeGeometry ref={gridRef} args={[GRID_SIZE, GRID_SIZE, GRID_SEGMENTS, GRID_SEGMENTS]} />
         <primitive object={gridMaterial} attach="material" />
       </mesh>
 
