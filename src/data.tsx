@@ -136,7 +136,7 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
             <p>PUBLIC REPOSITORY / PI-STYLE MULTI-AGENT STACK</p>
             <h3>
               <a
-                className="text-inherit no-underline"
+                className="mission-entry__link text-inherit no-underline"
                 href="https://github.com/Neutrino1998/artifact-flow"
                 target="_blank"
                 rel="noreferrer"
@@ -160,7 +160,7 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
             <p>INTERACTIVE LLM SYSTEM ENGINEERING WORKSHOP</p>
             <h3>
               <a
-                className="text-inherit no-underline"
+                className="mission-entry__link text-inherit no-underline"
                 href="https://github.com/Neutrino1998/llm-workshop"
                 target="_blank"
                 rel="noreferrer"
@@ -183,7 +183,7 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
             <p>INTERACTIVE 3D PERSONAL PORTFOLIO</p>
             <h3>
               <a
-                className="text-inherit no-underline"
+                className="mission-entry__link text-inherit no-underline"
                 href="https://github.com/Neutrino1998/brutalist-solar-portfolio"
                 target="_blank"
                 rel="noreferrer"
@@ -295,17 +295,26 @@ export const MODULE_CONTENT: Record<ModuleNode['id'], ModuleContent> = {
           <a href="mailto:1998neutrino@gmail.com">
             <span>CH.01 / EMAIL</span>
             <strong>1998neutrino@gmail.com</strong>
-            <small>OPEN CHANNEL ↗</small>
+            <small>
+              <span>OPEN CHANNEL</span>
+              <span className="transmission-channels__arrow" aria-hidden="true">↗</span>
+            </small>
           </a>
           <a href="https://github.com/Neutrino1998" target="_blank" rel="noreferrer">
             <span>CH.02 / GITHUB</span>
             <strong>@Neutrino1998</strong>
-            <small>EXTERNAL LINK ↗</small>
+            <small>
+              <span>EXTERNAL LINK</span>
+              <span className="transmission-channels__arrow" aria-hidden="true">↗</span>
+            </small>
           </a>
           <a href="https://github.com/Neutrino1998/artifact-flow" target="_blank" rel="noreferrer">
             <span>CH.03 / PROJECT</span>
             <strong>ArtifactFlow</strong>
-            <small>PUBLIC REPO ↗</small>
+            <small>
+              <span>PUBLIC REPO</span>
+              <span className="transmission-channels__arrow" aria-hidden="true">↗</span>
+            </small>
           </a>
         </div>
         <p className="transmission-record__warning">

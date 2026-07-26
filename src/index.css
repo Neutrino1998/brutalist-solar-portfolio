@@ -779,6 +779,42 @@
   line-height: 1;
 }
 
+.mission-entry__link {
+  position: relative;
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.mission-entry__link::after {
+  position: absolute;
+  right: 0;
+  bottom: -0.18rem;
+  left: 0;
+  height: 1px;
+  background: #be2e21;
+  content: '';
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mission-entry__link:hover,
+.mission-entry__link:focus-visible {
+  color: #be2e21;
+}
+
+.mission-entry__link:hover::after,
+.mission-entry__link:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.mission-entry__link:focus-visible {
+  outline: 1px solid #be2e21;
+  outline-offset: 0.28rem;
+}
+
 .mission-entry__content > span {
   color: rgb(222 216 196 / 62%);
   font-size: 0.78rem;
@@ -873,18 +909,33 @@
   color: #121212;
 }
 
-.transmission-channels span { color: #be2e21; }
+.transmission-channels a > span { color: #be2e21; }
 .transmission-channels strong {
   font-size: clamp(0.82rem, 1.25vw, 1.05rem);
   letter-spacing: -0.01em;
 }
 .transmission-channels small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35em;
   color: rgb(222 216 196 / 36%);
   font-size: 7px;
+  line-height: 1;
   text-align: right;
 }
-.transmission-channels a:hover span,
-.transmission-channels a:focus-visible span,
+
+.transmission-channels__arrow {
+  display: inline-grid;
+  width: 1em;
+  height: 1em;
+  place-items: center;
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.transmission-channels a:hover > span,
+.transmission-channels a:focus-visible > span,
 .transmission-channels a:hover small,
 .transmission-channels a:focus-visible small { color: #be2e21; }
 
@@ -1179,6 +1230,11 @@
   .module-nav-button,
   .module-nav-button::before,
   .module-nav-button__status {
+    transition-duration: 1ms;
+  }
+
+  .mission-entry__link,
+  .mission-entry__link::after {
     transition-duration: 1ms;
   }
 
