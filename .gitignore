@@ -3,6 +3,7 @@ build/*
 !build/sites-vite-plugin.ts
 dist/
 coverage/
+tmp/
 .DS_Store
 *.log
 .env*
