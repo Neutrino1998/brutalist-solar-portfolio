@@ -4,81 +4,103 @@ export type ArchiveSoundCue = 'focus' | 'open' | 'switch' | 'close';
 
 const SOUND_PREFERENCE_KEY = 'portfolio.archive-sound';
 
-const CUE_SETTINGS: Record<ArchiveSoundCue, {
-  source: string;
-  volume: number;
-  playbackRate: number;
-}> = {
-  focus: {
-    source: '/audio/archive-focus.mp3',
-    volume: 0.16,
-    playbackRate: 1,
-  },
-  open: {
-    source: '/audio/archive-open.mp3',
-    volume: 0.3,
-    playbackRate: 1,
-  },
-  switch: {
-    source: '/audio/archive-switch.mp3',
-    volume: 0.25,
-    playbackRate: 1,
-  },
-  close: {
-    source: '/audio/archive-switch.mp3',
-    volume: 0.2,
-    playbackRate: 0.82,
-  },
+const CUE_SOURCES: Record<ArchiveSoundCue, string> = {
+  focus: '/audio/radio-focus.wav',
+  open: '/audio/radio-open.wav',
+  switch: '/audio/radio-switch.wav',
+  close: '/audio/radio-close.wav',
 };
 
 class ArchiveSoundEngine {
-  private players = new Map<string, HTMLAudioElement>();
-  private activePlayer: HTMLAudioElement | null = null;
+  private context: AudioContext | null = null;
+  private clips = new Map<string, AudioBuffer | Promise<AudioBuffer | null>>();
+  private active: AudioBufferSourceNode | null = null;
+  private request = 0;
 
-  private getPlayer(source: string) {
-    const existingPlayer = this.players.get(source);
-    if (existingPlayer) return existingPlayer;
+  private getContext() {
+    if (!this.context && typeof AudioContext !== 'undefined') {
+      this.context = new AudioContext({ latencyHint: 'interactive' });
+    }
+    return this.context;
+  }
 
-    const player = new Audio(source);
-    player.preload = 'auto';
-    this.players.set(source, player);
-    return player;
+  private load(context: AudioContext, url: string) {
+    const cached = this.clips.get(url);
+    if (cached) return cached;
+
+    const loading = fetch(url)
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.arrayBuffer();
+      })
+      .then(bytes => context.decodeAudioData(bytes))
+      .then(buffer => {
+        this.clips.set(url, buffer);
+        return buffer;
+      })
+      .catch((error: unknown) => {
+        this.clips.delete(url);
+        if (context.state !== 'closed') console.warn('Could not load interface sound', url, error);
+        return null;
+      });
+    this.clips.set(url, loading);
+    return loading;
   }
 
   preload() {
-    Object.values(CUE_SETTINGS).forEach(({ source }) => {
-      this.getPlayer(source).load();
-    });
+    const context = this.getContext();
+    if (context) Object.values(CUE_SOURCES).forEach(url => this.load(context, url));
+  }
+
+  unlock() {
+    const context = this.getContext();
+    if (context && context.state !== 'running') void context.resume().catch(() => {});
+  }
+
+  private start(context: AudioContext, buffer: AudioBuffer) {
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    source.onended = () => {
+      source.disconnect();
+      if (this.active === source) this.active = null;
+    };
+    this.active = source;
+    source.start();
   }
 
   play(cue: ArchiveSoundCue) {
-    const settings = CUE_SETTINGS[cue];
-    const player = this.getPlayer(settings.source);
-    const pitchDrift = 0.99 + Math.random() * 0.02;
-
     this.stop();
-    player.currentTime = 0;
-    player.volume = settings.volume;
-    player.playbackRate = settings.playbackRate * pitchDrift;
-    player.onended = () => {
-      if (this.activePlayer === player) this.activePlayer = null;
-    };
-    this.activePlayer = player;
+    const context = this.getContext();
+    if (!context) return;
 
-    void player.play().catch(() => {
-      if (this.activePlayer === player) this.activePlayer = null;
-    });
+    const clip = this.load(context, CUE_SOURCES[cue]);
+    if (context.state === 'running' && clip instanceof AudioBuffer) {
+      this.start(context, clip);
+      return;
+    }
+
+    // A delayed hover would describe an option the pointer may already have left.
+    if (cue === 'focus') return;
+    const request = this.request;
+    void Promise.all([clip, context.resume()]).then(([buffer]) => {
+      if (buffer && request === this.request && context.state === 'running') {
+        this.start(context, buffer);
+      }
+    }, () => {});
   }
 
   stop() {
-    if (!this.activePlayer) return;
-    this.activePlayer.pause();
-    this.activePlayer.currentTime = 0;
-    this.activePlayer = null;
+    this.request++;
+    this.active?.stop();
+    this.active = null;
+  }
+
+  dispose() {
+    this.stop();
+    if (this.context) void this.context.close().catch(() => {});
   }
 }
-
-const archiveSoundEngine = new ArchiveSoundEngine();
 
 function getInitialPreference() {
   try {
@@ -91,13 +113,27 @@ function getInitialPreference() {
 export function useArchiveSound() {
   const [enabled, setEnabled] = useState(getInitialPreference);
   const enabledRef = useRef(enabled);
+  const engineRef = useRef<ArchiveSoundEngine | null>(null);
 
   useEffect(() => {
-    if (enabledRef.current) archiveSoundEngine.preload();
+    const engine = new ArchiveSoundEngine();
+    engineRef.current = engine;
+    if (enabledRef.current) engine.preload();
+    const unlock = () => {
+      if (enabledRef.current) engine.unlock();
+    };
+    window.addEventListener('pointerup', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    return () => {
+      window.removeEventListener('pointerup', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+      engine.dispose();
+      engineRef.current = null;
+    };
   }, []);
 
   const play = useCallback((cue: ArchiveSoundCue) => {
-    if (enabledRef.current) archiveSoundEngine.play(cue);
+    if (enabledRef.current) engineRef.current?.play(cue);
   }, []);
 
   const toggle = useCallback(() => {
@@ -112,9 +148,10 @@ export function useArchiveSound() {
     }
 
     if (nextEnabled) {
-      archiveSoundEngine.play('switch');
+      engineRef.current?.preload();
+      engineRef.current?.play('switch');
     } else {
-      archiveSoundEngine.stop();
+      engineRef.current?.stop();
     }
   }, []);
 

@@ -311,7 +311,7 @@ export default function OverlayUI({
           }}
           className="mb-1 mt-2 hidden text-[9px] font-bold uppercase tracking-[0.3em] text-[#DED8C4]/45 md:block"
         >
-          Audio ref. Mech-AB
+          Audio ref. Shortwave
         </motion.p>
         <SoundToggle
           enabled={soundEnabled}
