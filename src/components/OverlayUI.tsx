@@ -249,10 +249,10 @@ export default function OverlayUI({
           观测站<br />
           <span className="text-[#BE2E21]">STATION</span>
         </h1>
-        <div className="mt-5 h-1.5 w-20 bg-[#BE2E21] md:w-28" />
-        <p className="mt-4 max-w-xs text-[10px] font-bold uppercase leading-relaxed tracking-[0.22em] text-[#DED8C4]/55">
-          同温层
-          <span className="hidden md:block">AI agent platform engineer</span>
+        <div aria-hidden="true" className="mt-5 h-1.5 w-20 bg-[#BE2E21] md:w-28" />
+        <p className="mt-4 flex flex-col gap-1 text-[10px] font-bold uppercase leading-relaxed tracking-[0.22em] text-[#DED8C4]/55 md:flex-row md:items-baseline md:gap-4">
+          <span>同温层</span>
+          <span>AI Agent Engineer</span>
         </p>
       </header>
 
