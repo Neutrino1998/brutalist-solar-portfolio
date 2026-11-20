@@ -250,8 +250,8 @@ export default function OverlayUI({
           <span className="text-[#BE2E21]">STATION</span>
         </h1>
         <div aria-hidden="true" className="mt-5 h-1.5 w-20 bg-[#BE2E21] md:w-28" />
-        <p className="mt-4 flex flex-col gap-1 text-[10px] font-bold uppercase leading-relaxed tracking-[0.22em] text-[#DED8C4]/55 md:flex-row md:items-baseline md:gap-4">
-          <span>同温层</span>
+        <p className="mt-4 flex flex-col gap-1 text-[10px] font-bold uppercase leading-relaxed tracking-[0.22em] text-[#DED8C4]/55 md:flex-row md:items-baseline md:gap-1">
+          <span>同温层 <span aria-hidden="true">/</span></span>
           <span className="max-[22rem]:max-w-28">AI Agent Engineer</span>
         </p>
       </header>
