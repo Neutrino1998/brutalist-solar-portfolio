@@ -36,7 +36,7 @@ const LOCATOR_LABELS: Record<ModuleId, string> = {
 };
 
 const TERMINAL_LOGS = [
-  '[00.000] WAKE / PROFILE KERNEL',
+  '[00.000] OPEN / STATION LOG',
   '[00.041] MOUNT / CAREER GRAPH',
   '[00.086] SYNC / PROJECT INDEX',
   '[00.133] READ / PUBLIC RECORDS',
@@ -245,14 +245,14 @@ export default function OverlayUI({
         className={`absolute left-8 top-8 z-10 transition-all duration-500 md:left-16 md:top-16 ${activeModule ? '-translate-y-3 opacity-0' : 'translate-y-0 opacity-100'}`}
         aria-hidden={Boolean(activeModule)}
       >
-        <h1 className="text-5xl font-black uppercase tracking-[-0.07em] leading-[0.78] text-[#DED8C4] md:text-7xl lg:text-[104px]">
-          智能体中枢<br />
-          <span className="text-[#BE2E21]">KERNEL</span>
+        <h1 className="text-[clamp(2rem,10vw,3rem)] font-black uppercase tracking-[-0.07em] leading-[0.78] text-[#DED8C4] md:text-7xl lg:text-[104px]">
+          观测站<br />
+          <span className="text-[#BE2E21]">STATION</span>
         </h1>
         <div className="mt-5 h-1.5 w-20 bg-[#BE2E21] md:w-28" />
-        <p className="mt-4 hidden max-w-xs text-[10px] font-bold uppercase leading-relaxed tracking-[0.22em] text-[#DED8C4]/55 md:block">
-          Kangyi Kong / 孔康懿<br />
-          AI agent platform engineer
+        <p className="mt-4 max-w-xs text-[10px] font-bold uppercase leading-relaxed tracking-[0.22em] text-[#DED8C4]/55">
+          同温层
+          <span className="hidden md:block">AI agent platform engineer</span>
         </p>
       </header>
 
